@@ -1,4 +1,3 @@
-package SpertaClient.src.client;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -8,9 +7,29 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class myClient {
+
+        public String user;
+        public String pass;
         public static void main(String[] args) {
             myClient client = new myClient();
-            Scanner sc = new Scanner(System.in);
+
+            client.startClient();
+        }
+
+    public void startClient() {
+        Socket clientSocket = null;
+
+        try {
+        clientSocket = new Socket("127.0.0.1", 23456);
+        System.out.println("Socket iniciada!");
+
+        ObjectOutputStream outStream = new ObjectOutputStream(clientSocket.getOutputStream());
+		ObjectInputStream inStream = new ObjectInputStream(clientSocket.getInputStream());
+        Boolean sucesso = false;
+
+        Scanner sc = new Scanner(System.in);
+
+        while(!sucesso) {
             String user = "";
             String pass = "";
 
@@ -24,24 +43,16 @@ public class myClient {
                 pass = sc.nextLine();
             }
 
-            client.startClient(user, pass);
-            sc.close();
+            outStream.writeObject(user);
+            outStream.writeObject(pass);
+            sucesso = (Boolean) inStream.readObject();
+
+            if(!sucesso) {
+                System.out.println("Password incorreta!");
+            }
+
         }
-
-    public void startClient(String user, String pass) {
-        Socket clientSocket = null;
-
-        try {
-        clientSocket = new Socket("127.0.0.1", 23456);
-        System.out.println("Socket iniciada!");
-
-        ObjectOutputStream outStream = new ObjectOutputStream(clientSocket.getOutputStream());
-		ObjectInputStream inStream = new ObjectInputStream(clientSocket.getInputStream());
-
-        outStream.writeObject(user);
-        outStream.writeObject(pass);
-
-        Boolean sucesso = (Boolean) inStream.readObject();
+                
         if(sucesso) {
             System.out.println("Login efetuado com sucesso!");
 
@@ -82,8 +93,16 @@ public class myClient {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            
+
         } else
             System.out.println("Erro ao efetuar login!");
+
+
+        System.out.println("À espera da proxima ordem...");
+        Scanner waitScanner = new Scanner(System.in);
+        waitScanner.nextLine();
 
         outStream.close();
         inStream.close();
