@@ -1,6 +1,8 @@
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -8,150 +10,153 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
 
-public class SpertaServer{
+//Servidor myServer
+
+public class SpertaServer {
+
 	public static void main(String[] args) {
 		System.out.println("servidor: main");
 		SpertaServer server = new SpertaServer();
 		server.startServer();
 	}
 
-	public void startServer (){
+	public void startServer() {
 		ServerSocket sSoc = null;
-        
+
 		try {
 			sSoc = new ServerSocket(23456);
-			
 		} catch (IOException e) {
 			System.err.println(e.getMessage());
 			System.exit(-1);
 		}
-         
-		while(true) {
+
+		while (true) {
 			try {
 				Socket inSoc = sSoc.accept();
 				ServerThread newServerThread = new ServerThread(inSoc);
 				newServerThread.start();
-				//sSoc.close();
-		    }
-		    catch (IOException e) {
-		        e.printStackTrace();
-		    }
-		    
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
 		}
+		// sSoc.close();
 	}
 
-	//Threads utilizadas para comunicacao com os clientes
+	// Threads utilizadas para comunicacao com os clientes
 	class ServerThread extends Thread {
+
 		private Socket socket = null;
 
 		ServerThread(Socket inSoc) {
 			socket = inSoc;
-			System.out.println("Novo cliente:");
 			System.out.println("thread do server para cada cliente");
 		}
 
-		public void run(){
+		public void run() {
 			try {
 				ObjectOutputStream outStream = new ObjectOutputStream(socket.getOutputStream());
 				ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 
 				String user = null;
 				String passwd = null;
-				Boolean autenticated = false;
-				Boolean exists = false;
-			
+				boolean correctPass = false;
 				try {
-					user = (String)inStream.readObject();
-					passwd = (String)inStream.readObject();
-					System.out.println("thread: depois de receber a password e o user");
-					
-				}catch (ClassNotFoundException e1) {
-					e1.printStackTrace();
-				}
-
-				if(user != null && passwd != null) {
+					user = (String) inStream.readObject();
+					passwd = (String) inStream.readObject();
 					File file = new File("users.txt");
-					FileOutputStream output = new FileOutputStream(file, true);
-					FileInputStream input = new FileInputStream(file);
+
+					if (!file.exists()) {
+						file.createNewFile();
+					}
+
+					boolean exists = false;
 					Scanner sc = new Scanner(file);
 
 					while (sc.hasNextLine()) {
-						String user_file_line = sc.nextLine();
-						String[] user_file = user_file_line.split(":", 0);
+						String line = sc.nextLine();
+						String[] parts = line.split(":");
 
-						if(user.equals(user_file[0])) {
+						if (parts[0].equals(user)) {
 							exists = true;
-							if(passwd.equals(user_file[1])) {
-								autenticated = true;
-								System.out.println("User autenticado!");
+							if (parts[1].equals(passwd)) {
+								correctPass = true;
 							}
-							else {
-								autenticated = false;
-								System.out.println("Password errada!");
-								}
-							}
+							break;
 						}
-					
-					if(!exists) {
-						String newUser = "\n" + user + ":" + passwd;
-						output.write(newUser.getBytes());
-						System.out.println("Novo user registado com sucesso!");
-						autenticated = true;
 					}
+
 					sc.close();
-					input.close();
-					output.close();
-				}
-				outStream.writeObject(autenticated);
 
-				if(autenticated) {
-					System.out.println("A espera do envio do ficheiro!");
+					if (!exists) {
+						FileWriter fw = new FileWriter(file, true);
+						fw.write(user + ":" + passwd + "\n");
+						fw.close();
+						outStream.writeObject("NEW");
+						outStream.flush();
 
-					try{
-						String fileName = (String) inStream.readObject();
-						Long fileSize = (Long) inStream.readObject();
+						long fileSize = inStream.readLong();
 
-						FileOutputStream fileOut = new FileOutputStream("server_" + fileName);
-						byte[] buffer = new byte[1024];
+						FileOutputStream fileOut = new FileOutputStream(user + ".dat");
+
+						byte[] buffer = new byte[4096];
 						int bytesRead;
-						long totalLido = 0;
+						long totalRead = 0;
 
-						while (totalLido < fileSize && (bytesRead = inStream.read(buffer, 0, (int)Math.min(buffer.length, fileSize - totalLido))) != -1) {
+						while (totalRead < fileSize &&
+								(bytesRead = inStream.read(buffer, 0,
+										(int) Math.min(buffer.length, fileSize - totalRead))) > 0) {
+
 							fileOut.write(buffer, 0, bytesRead);
-							totalLido += bytesRead;
+							totalRead += bytesRead;
 						}
 
 						fileOut.close();
-						System.out.println("Ficheiro recebido e guardado como 'server_" + fileName + "' com sucesso!");
+						System.out.println("Ficheiro recebido com sucesso!");
 
-						FileInputStream fileIn = new FileInputStream("server_" + fileName);
-						outStream.writeObject(fileName);
-						outStream.writeObject(fileSize);
-						byte[] buffer1 = new byte[1024];
-						int bytesRead1;
-
-						while ((bytesRead1 = fileIn.read(buffer1)) != -1) {
-								outStream.write(buffer1, 0, bytesRead1);
-							}
-
-                		outStream.flush(); // Garante que o último bocado de bytes é empurrado pelo tubo
-						
-						fileIn.close();
-						System.out.println("Ficheiro enviado de volta para o cliente com sucesso!");
-					} catch (ClassNotFoundException e1) {
-						e1.printStackTrace();
 					}
+
+					if (correctPass) {
+						outStream.writeObject("SEND");
+						outStream.flush();
+
+						File userFile = new File(user + ".dat");
+						FileInputStream fileIn = new FileInputStream(userFile);
+
+						long fileSize = userFile.length();
+
+						outStream.writeLong(fileSize);
+						outStream.flush();
+
+						byte[] buffer = new byte[4096];
+						int bytesRead;
+
+						while ((bytesRead = fileIn.read(buffer)) > 0) {
+							outStream.write(buffer, 0, bytesRead);
+						}
+
+						outStream.flush();
+						fileIn.close();
+
+						System.out.println("Ficheiro enviado com sucesso!");
+					} else {
+						outStream.writeObject("INVALID");
+						outStream.flush();
+					}
+
+					// System.out.println("thread: depois de receber a password e o user");
+				} catch (ClassNotFoundException e1) {
+					e1.printStackTrace();
 				}
 
 				outStream.close();
 				inStream.close();
-				socket.close();
-			}
 
-				catch (IOException e) {
+				socket.close();
+
+			} catch (IOException e) {
 				e.printStackTrace();
-				}
-			} 
+			}
 		}
 	}
-
+}
