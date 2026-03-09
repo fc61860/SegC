@@ -66,7 +66,7 @@ public class SpertaServer {
 
 							user = (String) inStream.readObject();
 							passwd = (String) inStream.readObject();
-							File file = new File("users.txt");
+							File file = new File("C:\\Users\\ritai\\OneDrive\\Documentos\\GitHub\\SegC\\SpertaServer\\data\\users.txt");
 
 							if (!file.exists()) {
 								file.createNewFile();
@@ -94,7 +94,7 @@ public class SpertaServer {
 								FileWriter fw = new FileWriter(file, true);
 								fw.write(user + ":" + passwd + "\n");
 								fw.close();
-								outStream.writeObject("NEW");
+								//outStream.writeObject("NEW");
 								outStream.flush();
 
 								long fileSize = inStream.readLong();
