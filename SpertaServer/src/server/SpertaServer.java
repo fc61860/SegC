@@ -1,3 +1,4 @@
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -12,6 +13,8 @@ import java.util.Scanner;
 //Servidor myServer
 
 public class SpertaServer {
+	private static final int MAX_TENTATIVAS = 3;
+	private static final String FICHEIRO_USERS = "users.txt";
 
 	public static void main(String[] args) {
 		System.out.println("servidor: main");
@@ -58,98 +61,10 @@ public class SpertaServer {
 				ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 
 				String user = null;
-				String passwd = null;
-				boolean correctPass = false;
+				try {
+					user = (String) inStream.readObject();
+					boolean validClient = autenticarCliente(user, inStream, outStream);
 
-					try {
-						while(!correctPass) {
-
-							user = (String) inStream.readObject();
-							passwd = (String) inStream.readObject();
-							File file = new File("SpertaServer/data/users.txt");
-
-							if (!file.exists()) {
-								file.createNewFile();
-							}
-
-							boolean exists = false;
-							Scanner sc = new Scanner(file);
-
-							while (sc.hasNextLine()) {
-								String line = sc.nextLine();
-								String[] parts = line.split(":");
-
-								if (parts[0].equals(user)) {
-									exists = true;
-									if (parts[1].equals(passwd)) {
-										correctPass = true;
-									}
-									break;
-								}
-							}
-
-							sc.close();
-
-							if (!exists) {
-								FileWriter fw = new FileWriter(file, true);
-								fw.write(user + ":" + passwd + "\n");
-								fw.close();
-								//outStream.writeObject("NEW"); se descomentar isto o cliente não vai ler o boolean da passe correta
-								outStream.flush();
-
-								long fileSize = inStream.readLong();
-
-								FileOutputStream fileOut = new FileOutputStream(user + ".dat");
-
-								byte[] buffer = new byte[4096];
-								int bytesRead;
-								long totalRead = 0;
-
-								while (totalRead < fileSize &&
-										(bytesRead = inStream.read(buffer, 0,
-												(int) Math.min(buffer.length, fileSize - totalRead))) > 0) {
-
-									fileOut.write(buffer, 0, bytesRead);
-									totalRead += bytesRead;
-								}
-
-								fileOut.close();
-								System.out.println("Ficheiro recebido com sucesso!");
-
-							}
-							outStream.writeObject(correctPass);
-						}
-					
-
-					if (correctPass) {
-						outStream.writeObject("SEND");
-						outStream.flush();
-
-						File userFile = new File(user + ".dat");
-						FileInputStream fileIn = new FileInputStream(userFile);
-
-						long fileSize = userFile.length();
-
-						outStream.writeLong(fileSize);
-						outStream.flush();
-
-						byte[] buffer = new byte[4096];
-						int bytesRead;
-
-						while ((bytesRead = fileIn.read(buffer)) > 0) {
-							outStream.write(buffer, 0, bytesRead);
-						}
-
-						outStream.flush();
-						fileIn.close();
-
-						System.out.println("Ficheiro enviado com sucesso!");
-					} else {
-						outStream.writeObject("INVALID");
-						outStream.flush();
-					}
-
-					// System.out.println("thread: depois de receber a password e o user");
 				} catch (ClassNotFoundException e1) {
 					e1.printStackTrace();
 				}
@@ -162,6 +77,61 @@ public class SpertaServer {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+		}
+
+		private static boolean autenticarCliente(String user, ObjectInputStream inStream, ObjectOutputStream outStream)
+				throws IOException, ClassNotFoundException {
+			int tentativas = MAX_TENTATIVAS;
+
+			String passwd = null;
+
+			File file = new File(FICHEIRO_USERS);
+			if (!file.exists())
+				file.createNewFile();
+
+			Scanner sc = new Scanner(file);
+			String correctPassword = null;
+			boolean exists = false;
+			while (sc.hasNextLine()) {
+				String line = sc.nextLine();
+				String[] parts = line.split(":");
+				if (parts[0].equals(user)) {
+					exists = true;
+					correctPassword = parts[1];
+					break;
+				}
+			}
+			sc.close();
+
+			//novo utilizador
+			if (!exists) {
+				FileWriter fw = new FileWriter(file, true);
+				fw.write(user + ":" + passwd + "\n");
+				fw.close();
+				outStream.writeObject("OK-NEW-USER");
+				outStream.flush();
+				return true;
+			}
+
+			//autenticação
+			while (tentativas > 0) {
+				passwd = (String) inStream.readObject();
+				if (correctPassword.equals(passwd)) {
+					outStream.writeObject("ATTESTATION OK");
+					outStream.flush();
+					return true;
+				} else {
+					tentativas--;
+					if (tentativas > 0) {
+						outStream.writeObject("WRONG-PWD-" + tentativas);
+						outStream.flush();
+					} else {
+						outStream.writeObject("USER-BLOCKED");
+						outStream.flush();
+					}
+				}
+			}
+			return false;
 		}
 	}
 }
