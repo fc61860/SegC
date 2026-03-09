@@ -58,7 +58,7 @@ public class myClient {
         if(sucesso) {
             System.out.println("Login efetuado com sucesso!");
 
-            File fileSend = new File("C:\\Users\\ritai\\OneDrive\\Documentos\\GitHub\\SegC\\SpertaServer\\data\\teste.txt");
+            File fileSend = new File("SpertaServer/data/teste.txt");
             if(fileSend.exists()) {
                 outStream.writeObject(fileSend.getName());
                 outStream.writeObject(fileSend.length());

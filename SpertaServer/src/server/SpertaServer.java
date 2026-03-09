@@ -66,7 +66,7 @@ public class SpertaServer {
 
 							user = (String) inStream.readObject();
 							passwd = (String) inStream.readObject();
-							File file = new File("C:\\Users\\ritai\\OneDrive\\Documentos\\GitHub\\SegC\\SpertaServer\\data\\users.txt");
+							File file = new File("SpertaServer/data/users.txt");
 
 							if (!file.exists()) {
 								file.createNewFile();
@@ -94,7 +94,7 @@ public class SpertaServer {
 								FileWriter fw = new FileWriter(file, true);
 								fw.write(user + ":" + passwd + "\n");
 								fw.close();
-								//outStream.writeObject("NEW");
+								//outStream.writeObject("NEW"); se descomentar isto o cliente não vai ler o boolean da passe correta
 								outStream.flush();
 
 								long fileSize = inStream.readLong();
