@@ -68,10 +68,77 @@ public class myClient {
                 if(input.isEmpty()) continue;
 
                 String[] parts = input.split(" ");
-                String order = parts[0].toUpperCase();
-                
-            }
+                String command = parts[0].toUpperCase();
 
+                switch(command) {
+                    case "CREATE":
+                        if(parts.length == 2) {
+                            String home = parts[1];
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: CREATE <hm>");
+                        break;
+
+                    case "ADD":
+                        if(parts.length == 4) {
+                            String user = parts[1];
+                            String home = parts[2];
+                            String sec = parts[3];
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: ADD <user> <hm> <s>");
+                        break;
+
+                    case "RD":
+                        if(parts.length == 3) {
+                            String home = parts[1];
+                            String sec = parts[2];
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: RD <hm> <sec>");
+                        break;
+
+                    case "EC":
+                        if(parts.length == 4) {
+                            String home = parts[1];
+                            String disp = parts[2];
+                            int valor = Integer.parseInt(parts[3]);
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: EC <hm> <d> <int>");
+                        break;
+
+                    case "RT":
+                        if(parts.length == 2) {
+                            String home = parts[1];
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: RT <hm>");
+                        break;
+
+                    case "RH":
+                        if(parts.length == 3) {
+                            String home = parts[1];
+                            String disp = parts[2];
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: RH <hm> <d>");
+                        break;
+
+                    case "EXIT":
+                        System.out.println("A encerrar sessão...");
+                        running = false;
+                        
+                    default:
+                            System.out.println("Comando desconhecido! Tente novamente.");
+                            break;
+                }
+            }
+                
+        } else
+            System.out.println("Erro ao efetuar login!");
+
+        
             // File fileSend = new File("SpertaServer/data/teste.txt");
             // if(fileSend.exists()) {
             //     outStream.writeObject(fileSend.getName());
@@ -109,16 +176,9 @@ public class myClient {
             // } catch (Exception e) {
             //     e.printStackTrace();
             // }
-
-            
-
-        } else
-            System.out.println("Erro ao efetuar login!");
-
-
-        System.out.println("À espera da proxima ordem...");
-        Scanner waitScanner = new Scanner(System.in);
-        waitScanner.nextLine();
+        // System.out.println("À espera da proxima ordem...");
+        // Scanner waitScanner = new Scanner(System.in);
+        // waitScanner.nextLine();
 
         outStream.close();
         inStream.close();
