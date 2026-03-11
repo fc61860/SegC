@@ -1,0 +1,6 @@
+Casa1;iberia;alan: M|L,nuno:G; M1, M2,L1
+Casa2;nuno;alan: all; M1
+
+
+
+Casa1 iberia crioua
