@@ -1,4 +1,5 @@
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -61,12 +62,30 @@ public class SpertaServer {
 				ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 
 				String user = null;
+				boolean validClient = false;
 				try {
 					user = (String) inStream.readObject();
-					boolean validClient = autenticarCliente(user, inStream, outStream);
+					validClient = autenticarCliente(user, inStream, outStream);
 
 				} catch (ClassNotFoundException e1) {
 					e1.printStackTrace();
+				}
+				if (validClient) {
+					try {
+						while (true) {
+							processCommand(inStream, outStream);
+
+						}
+						// Ctrl-C
+					} catch (EOFException e) {
+						System.out.println("Client disconnected.");
+					} catch (IOException e) {
+						System.out.println("Connection lost.");
+					} catch (ClassNotFoundException e) {
+						e.printStackTrace();
+					} finally {
+						socket.close();
+					}
 				}
 
 				outStream.close();
@@ -79,8 +98,8 @@ public class SpertaServer {
 			}
 		}
 
-		private static boolean autenticarCliente(String user, ObjectInputStream inStream, ObjectOutputStream outStream)
-				throws IOException, ClassNotFoundException {
+		private static boolean autenticarCliente(String user, ObjectInputStream inStream,
+				ObjectOutputStream outStream) throws IOException, ClassNotFoundException {
 			int tentativas = MAX_TENTATIVAS;
 
 			String passwd = null;
@@ -103,7 +122,7 @@ public class SpertaServer {
 			}
 			sc.close();
 
-			//novo utilizador
+			// novo utilizador
 			if (!exists) {
 				FileWriter fw = new FileWriter(file, true);
 				fw.write(user + ":" + passwd + "\n");
@@ -113,7 +132,7 @@ public class SpertaServer {
 				return true;
 			}
 
-			//autenticação
+			// autenticação
 			while (tentativas > 0) {
 				passwd = (String) inStream.readObject();
 				if (correctPassword.equals(passwd)) {
@@ -132,6 +151,37 @@ public class SpertaServer {
 				}
 			}
 			return false;
+		}
+
+		private void processCommand(ObjectInputStream inStream, ObjectOutputStream outStream)
+				throws IOException, ClassNotFoundException {
+
+			String message = (String) inStream.readObject();
+
+			String[] parts = message.split(" ");
+			String command = parts[0];
+			switch (command) {
+
+				case "CREATE":
+					criarCasa(outStream, parts);
+					break;
+				case "ADD":
+					adicionarUtilizador(inStream, outStream, parts);
+					break;
+				case "RD":
+					registarDispositivo(inStream, outStream, parts);
+					break;
+				case "EC":
+					envioValor(inStream, outStream, parts);
+					break;
+				case "RT":
+					receberTemp(inStream, outStream, parts);
+					break;
+				case "RH":
+					receberHistorico(inStream, outStream, parts);
+					break;
+
+			}
 		}
 	}
 }
