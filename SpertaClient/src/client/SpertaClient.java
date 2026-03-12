@@ -8,12 +8,12 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Scanner;
 
-public class myClient {
+public class SpertaClient {
 
         public String user;
         public String pass;
         public static void main(String[] args) {
-            myClient client = new myClient();
+            SpertaClient client = new SpertaClient();
 
             client.startClient();
         }
@@ -55,14 +55,16 @@ public class myClient {
 
         }
                 
-        if(sucesso) {
-            System.out.println("Login efetuado com sucesso!");
-            Boolean running = true;
-            
-            mostrarMenu();
+        
+        System.out.println("Login efetuado com sucesso!");
+        Boolean running = true;
+        
+        mostrarMenu();
 
-            // ler os comandos do user
-            while(running) {
+        // ler os comandos do user
+        while(running) {
+            try {
+                System.out.println("Comando: ");
                 String input = sc.nextLine().trim();
 
                 if(input.isEmpty()) continue;
@@ -74,6 +76,7 @@ public class myClient {
                     case "CREATE":
                         if(parts.length == 2) {
                             String home = parts[1];
+                            outStream.writeObject(home);
                             //
                         } else
                             System.out.println("Formato incorreto. Tente: CREATE <hm>");
@@ -84,6 +87,9 @@ public class myClient {
                             String user = parts[1];
                             String home = parts[2];
                             String sec = parts[3];
+                            outStream.writeObject(user);
+                            outStream.writeObject(home);
+                            outStream.writeObject(sec);
                             //
                         } else
                             System.out.println("Formato incorreto. Tente: ADD <user> <hm> <s>");
@@ -93,6 +99,8 @@ public class myClient {
                         if(parts.length == 3) {
                             String home = parts[1];
                             String sec = parts[2];
+                            outStream.writeObject(home);
+                            outStream.writeObject(sec);
                             //
                         } else
                             System.out.println("Formato incorreto. Tente: RD <hm> <sec>");
@@ -103,6 +111,9 @@ public class myClient {
                             String home = parts[1];
                             String disp = parts[2];
                             int valor = Integer.parseInt(parts[3]);
+                            outStream.writeObject(home);
+                            outStream.writeObject(disp);
+                            outStream.writeInt(valor);
                             //
                         } else
                             System.out.println("Formato incorreto. Tente: EC <hm> <d> <int>");
@@ -111,6 +122,7 @@ public class myClient {
                     case "RT":
                         if(parts.length == 2) {
                             String home = parts[1];
+                            outStream.writeObject(home);
                             //
                         } else
                             System.out.println("Formato incorreto. Tente: RT <hm>");
@@ -120,24 +132,24 @@ public class myClient {
                         if(parts.length == 3) {
                             String home = parts[1];
                             String disp = parts[2];
+                            outStream.writeObject(home);
+                            outStream.writeObject(disp);
                             //
                         } else
                             System.out.println("Formato incorreto. Tente: RH <hm> <d>");
                         break;
 
-                    case "EXIT":
-                        System.out.println("A encerrar sessão...");
-                        running = false;
-                        
                     default:
                             System.out.println("Comando desconhecido! Tente novamente.");
                             break;
-                }
-            }
-                
-        } else
-            System.out.println("Erro ao efetuar login!");
 
+                }
+            }catch (Exception e) {
+                // Quando o cliente faz Ctrl+C, o código salta imediatamente para aqui!
+                System.out.println("O cliente desligou-se (Ligação terminada).");
+                break; // Quebra o ciclo infinito do servidor para esta thread poder morrer em paz
+            }
+        }
         
             // File fileSend = new File("SpertaServer/data/teste.txt");
             // if(fileSend.exists()) {
@@ -194,6 +206,7 @@ public class myClient {
     private void mostrarMenu() {
         System.out.println("\n=========================================================================");
         System.out.println("                            MENU DE COMANDOS                             ");
+        System.out.println("                      (Pressione Ctrl+C para sair)                       ");
         System.out.println("=========================================================================");
         System.out.println(" CREATE <hm>         | Criar casa <hm> (Ficas como Owner)");
         System.out.println(" ADD <user> <hm> <s> | Adicionar <user> à casa <hm>, secção <s>");
@@ -201,8 +214,6 @@ public class myClient {
         System.out.println(" EC <hm> <d> <int>   | Enviar valor <int> ao dispositivo <d> da casa <hm>");
         System.out.println(" RT <hm>             | Receber último estado dos dispositivos da casa <hm>");
         System.out.println(" RH <hm> <d>         | Receber Histórico (.csv) do dispositivo <d>");
-        System.out.println(" EXIT                | Sair da aplicação");
         System.out.println("=========================================================================");
-        System.out.print("Introduza um comando: ");
-    }
+        }
 }
