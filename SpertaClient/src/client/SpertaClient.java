@@ -74,12 +74,22 @@ public class SpertaClient {
 
                 switch(command) {
                     case "CREATE":
-                        if(parts.length == 2) {
+                        if(parts.length == 2 && parts[1].matches("^[a-zA-Z][a-zA-Z0-9]*$")) {
                             String home = parts[1];
-                            outStream.writeObject(home);
+
+                            try {
+                                outStream.writeObject(home);
+
+                                String answer = (String) inStream.readObject();
+                                System.out.println("Server: " + answer);
+                            } catch (Exception e) {
+                                System.out.println("Erro ao comunicar com o servidor.");
+                            }
+                            
                             //
                         } else
                             System.out.println("Formato incorreto. Tente: CREATE <hm>");
+                            System.out.println("O nome da casa deve começar com uma letra!");
                         break;
 
                     case "ADD":
@@ -107,13 +117,18 @@ public class SpertaClient {
                         break;
 
                     case "EC":
-                        if(parts.length == 4) {
+                        if(parts.length == 4 && parts[3].matches("^[0-9]+$")) {
                             String home = parts[1];
                             String disp = parts[2];
                             int valor = Integer.parseInt(parts[3]);
-                            outStream.writeObject(home);
-                            outStream.writeObject(disp);
-                            outStream.writeInt(valor);
+                            
+                            if(valor == 0 || valor == 1 | (valor > 1 && valor <= 600) ) {
+                                outStream.writeObject(home);
+                                outStream.writeObject(disp);
+                                outStream.writeInt(valor);
+                            } else
+                                System.out.println("Valores  possíveis de <int>: 0(desligar), 1(ligar), ]1..600] (ligar por x minutos, até 600). ");
+                            
                             //
                         } else
                             System.out.println("Formato incorreto. Tente: EC <hm> <d> <int>");
@@ -144,10 +159,9 @@ public class SpertaClient {
                             break;
 
                 }
-            }catch (Exception e) {
-                // Quando o cliente faz Ctrl+C, o código salta imediatamente para aqui!
+            }catch (Exception e) { // Ctrl C
                 System.out.println("O cliente desligou-se (Ligação terminada).");
-                break; // Quebra o ciclo infinito do servidor para esta thread poder morrer em paz
+                break; 
             }
         }
         
