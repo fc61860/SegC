@@ -1,8 +1,5 @@
 package SpertaClient.src.client;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -29,7 +26,7 @@ public class SpertaClient {
 		ObjectInputStream inStream = new ObjectInputStream(clientSocket.getInputStream());
         Boolean sucesso = false;
 
-        Scanner sc = new Scanner(System.in);
+        Scanner sc = new Scanner(System.in); //este scanner não se fecha para evitar conflitos com o teclado.
 
         while(!sucesso) {
             String user = "";
@@ -72,93 +69,8 @@ public class SpertaClient {
                 String[] parts = input.split(" ");
                 String command = parts[0].toUpperCase();
 
-                switch(command) {
-                    case "CREATE":
-                        if(parts.length == 2 && parts[1].matches("^[a-zA-Z][a-zA-Z0-9]*$")) {
-                            String home = parts[1];
-
-                            try {
-                                outStream.writeObject(home);
-
-                                String answer = (String) inStream.readObject();
-                                System.out.println("Server: " + answer);
-                            } catch (Exception e) {
-                                System.out.println("Erro ao comunicar com o servidor.");
-                            }
-                            
-                            //
-                        } else
-                            System.out.println("Formato incorreto. Tente: CREATE <hm>");
-                            System.out.println("O nome da casa deve começar com uma letra!");
-                        break;
-
-                    case "ADD":
-                        if(parts.length == 4) {
-                            String user = parts[1];
-                            String home = parts[2];
-                            String sec = parts[3];
-                            outStream.writeObject(user);
-                            outStream.writeObject(home);
-                            outStream.writeObject(sec);
-                            //
-                        } else
-                            System.out.println("Formato incorreto. Tente: ADD <user> <hm> <s>");
-                        break;
-
-                    case "RD":
-                        if(parts.length == 3) {
-                            String home = parts[1];
-                            String sec = parts[2];
-                            outStream.writeObject(home);
-                            outStream.writeObject(sec);
-                            //
-                        } else
-                            System.out.println("Formato incorreto. Tente: RD <hm> <sec>");
-                        break;
-
-                    case "EC":
-                        if(parts.length == 4 && parts[3].matches("^[0-9]+$")) {
-                            String home = parts[1];
-                            String disp = parts[2];
-                            int valor = Integer.parseInt(parts[3]);
-                            
-                            if(valor == 0 || valor == 1 | (valor > 1 && valor <= 600) ) {
-                                outStream.writeObject(home);
-                                outStream.writeObject(disp);
-                                outStream.writeInt(valor);
-                            } else
-                                System.out.println("Valores  possíveis de <int>: 0(desligar), 1(ligar), ]1..600] (ligar por x minutos, até 600). ");
-                            
-                            //
-                        } else
-                            System.out.println("Formato incorreto. Tente: EC <hm> <d> <int>");
-                        break;
-
-                    case "RT":
-                        if(parts.length == 2) {
-                            String home = parts[1];
-                            outStream.writeObject(home);
-                            //
-                        } else
-                            System.out.println("Formato incorreto. Tente: RT <hm>");
-                        break;
-
-                    case "RH":
-                        if(parts.length == 3) {
-                            String home = parts[1];
-                            String disp = parts[2];
-                            outStream.writeObject(home);
-                            outStream.writeObject(disp);
-                            //
-                        } else
-                            System.out.println("Formato incorreto. Tente: RH <hm> <d>");
-                        break;
-
-                    default:
-                            System.out.println("Comando desconhecido! Tente novamente.");
-                            break;
-
-                }
+                processCommand(command, parts, outStream, inStream);
+                
             }catch (Exception e) { // Ctrl C
                 System.out.println("O cliente desligou-se (Ligação terminada).");
                 break; 
@@ -229,5 +141,137 @@ public class SpertaClient {
         System.out.println(" RT <hm>             | Receber último estado dos dispositivos da casa <hm>");
         System.out.println(" RH <hm> <d>         | Receber Histórico (.csv) do dispositivo <d>");
         System.out.println("=========================================================================");
-        }
+    }
+
+    private void processCommand(String command, String[] parts, ObjectOutputStream outStream, ObjectInputStream inStream) {
+        switch(command) {
+                    case "CREATE":
+                        if(parts.length == 2 && parts[1].matches("^[a-zA-Z][a-zA-Z0-9]*$")) {
+                            String home = parts[1];
+
+                            try {
+                                outStream.writeObject(command);
+                                outStream.writeObject(home);
+
+                                String answer = (String) inStream.readObject();
+                                System.out.println("Server: " + answer);
+                            } catch (Exception e) {
+                                System.out.println("Erro ao comunicar com o servidor.");
+                            }
+                            
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: CREATE <hm>");
+                            System.out.println("O nome da casa deve começar com uma letra!");
+                        break;
+
+                    case "ADD":
+                        if(parts.length == 4) {
+                            String user = parts[1];
+                            String home = parts[2];
+                            String sec = parts[3];
+                            try {
+                                outStream.writeObject(command);
+                                outStream.writeObject(user);
+                                outStream.writeObject(home);
+                                outStream.writeObject(sec);
+
+                                String answer = (String) inStream.readObject();
+                                System.out.println("Server: " + answer);
+                            } catch (Exception e) {
+                                System.out.println("Erro ao comunicar com o servidor.");
+                            }
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: ADD <user> <hm> <s>");
+                        break;
+
+                    case "RD":
+                        if(parts.length == 3) {
+                            String home = parts[1];
+                            String sec = parts[2];
+                            try {
+                                outStream.writeObject(command);
+                                outStream.writeObject(home);
+                                outStream.writeObject(sec);
+
+                                String answer = (String) inStream.readObject();
+                                System.out.println("Server: " + answer);
+                            } catch (Exception e) {
+                                System.out.println("Erro ao comunicar com o servidor.");
+                            }
+                            
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: RD <hm> <sec>");
+                        break;
+
+                    case "EC":
+                        if(parts.length == 4 && parts[3].matches("^[0-9]+$")) {
+                            String home = parts[1];
+                            String disp = parts[2];
+                            int valor = Integer.parseInt(parts[3]);
+                            
+                            if(valor == 0 || valor == 1 | (valor > 1 && valor <= 600) ) {
+                                try {
+                                    outStream.writeObject(command);
+                                    outStream.writeObject(home);
+                                    outStream.writeObject(disp);
+                                    outStream.writeInt(valor);
+
+                                    String answer = (String) inStream.readObject();
+                                    System.out.println("Server: " + answer);
+                                } catch (Exception e) {
+                                    System.out.println("Erro ao comunicar com o servidor.");
+                                }
+                            } else
+                                System.out.println("Valores  possíveis de <int>: 0(desligar), 1(ligar), ]1..600] (ligar por x minutos, até 600). ");
+                            
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: EC <hm> <d> <int>");
+                        break;
+
+                    case "RT":
+                        if(parts.length == 2) {
+                            String home = parts[1];
+                            try {
+                                outStream.writeObject(command);
+                                outStream.writeObject(home);
+                                
+                                String answer = (String) inStream.readObject();
+                                System.out.println("Server: " + answer);
+                            } catch (Exception e) {
+                                System.out.println("Erro ao comunicar com o servidor.");
+                            }
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: RT <hm>");
+                        break;
+
+                    case "RH":
+                        if(parts.length == 3) {
+                            String home = parts[1];
+                            String disp = parts[2];
+                            try {
+                                outStream.writeObject(command);
+                                outStream.writeObject(home);
+                                outStream.writeObject(disp);
+
+                                String answer = (String) inStream.readObject();
+                                System.out.println("Server: " + answer);
+                            } catch (Exception e) {
+                                System.out.println("Erro ao comunicar com o servidor.");
+                            }
+                            //
+                        } else
+                            System.out.println("Formato incorreto. Tente: RH <hm> <d>");
+                        break;
+
+                    default:
+                            System.out.println("Comando desconhecido! Tente novamente.");
+                            break;
+
+                }
+    }
 }
