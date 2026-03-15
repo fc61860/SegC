@@ -1,5 +1,6 @@
 package SpertaClient.src.client;
 
+import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -44,10 +45,12 @@ public class SpertaClient {
 
             outStream.writeObject(user);
             outStream.writeObject(pass);
-            sucesso = (Boolean) inStream.readObject();
+            String respostaAuth = (String) inStream.readObject(); 
 
-            if(!sucesso) {
-                System.out.println("Password incorreta!");
+            if(respostaAuth.equals("OK-NEW-USER") || respostaAuth.equals("OK-USER") || respostaAuth.equals("ATTESTATION OK")) {
+                sucesso = true;
+            } else {
+                System.out.println("Resposta do Servidor: " + respostaAuth);
             }
 
         }
@@ -56,7 +59,7 @@ public class SpertaClient {
         System.out.println("Login efetuado com sucesso!");
         Boolean running = true;
         
-        mostrarMenu();
+        showMenu();
 
         // ler os comandos do user
         while(running) {
@@ -69,7 +72,7 @@ public class SpertaClient {
                 String[] parts = input.split(" ");
                 String command = parts[0].toUpperCase();
 
-                processCommand(command, parts, outStream, inStream);
+                processCommand(command, parts, input, outStream, inStream);
                 
             }catch (Exception e) { // Ctrl C
                 System.out.println("O cliente desligou-se (Ligação terminada).");
@@ -129,7 +132,7 @@ public class SpertaClient {
 
     }
 
-    private void mostrarMenu() {
+    private void showMenu() {
         System.out.println("\n=========================================================================");
         System.out.println("                            MENU DE COMANDOS                             ");
         System.out.println("                      (Pressione Ctrl+C para sair)                       ");
@@ -143,15 +146,16 @@ public class SpertaClient {
         System.out.println("=========================================================================");
     }
 
-    private void processCommand(String command, String[] parts, ObjectOutputStream outStream, ObjectInputStream inStream) {
+    private void processCommand(String command, String[] parts, String input, ObjectOutputStream outStream, ObjectInputStream inStream) {
         switch(command) {
                     case "CREATE":
                         if(parts.length == 2 && parts[1].matches("^[a-zA-Z][a-zA-Z0-9]*$")) {
-                            String home = parts[1];
+                            //String home = parts[1];
 
                             try {
-                                outStream.writeObject(command);
-                                outStream.writeObject(home);
+                                outStream.writeObject(input);
+                                outStream.flush();
+                                //outStream.writeObject(home);
 
                                 String answer = (String) inStream.readObject();
                                 System.out.println("Server: " + answer);
@@ -167,14 +171,9 @@ public class SpertaClient {
 
                     case "ADD":
                         if(parts.length == 4) {
-                            String user = parts[1];
-                            String home = parts[2];
-                            String sec = parts[3];
                             try {
-                                outStream.writeObject(command);
-                                outStream.writeObject(user);
-                                outStream.writeObject(home);
-                                outStream.writeObject(sec);
+                                outStream.writeObject(input);
+                                outStream.flush();
 
                                 String answer = (String) inStream.readObject();
                                 System.out.println("Server: " + answer);
@@ -188,12 +187,9 @@ public class SpertaClient {
 
                     case "RD":
                         if(parts.length == 3) {
-                            String home = parts[1];
-                            String sec = parts[2];
                             try {
-                                outStream.writeObject(command);
-                                outStream.writeObject(home);
-                                outStream.writeObject(sec);
+                                outStream.writeObject(input);
+                                outStream.flush();
 
                                 String answer = (String) inStream.readObject();
                                 System.out.println("Server: " + answer);
@@ -208,16 +204,12 @@ public class SpertaClient {
 
                     case "EC":
                         if(parts.length == 4 && parts[3].matches("^[0-9]+$")) {
-                            String home = parts[1];
-                            String disp = parts[2];
                             int valor = Integer.parseInt(parts[3]);
                             
                             if(valor == 0 || valor == 1 | (valor > 1 && valor <= 600) ) {
                                 try {
-                                    outStream.writeObject(command);
-                                    outStream.writeObject(home);
-                                    outStream.writeObject(disp);
-                                    outStream.writeInt(valor);
+                                    outStream.writeObject(input);
+                                    outStream.flush();
 
                                     String answer = (String) inStream.readObject();
                                     System.out.println("Server: " + answer);
@@ -236,11 +228,12 @@ public class SpertaClient {
                         if(parts.length == 2) {
                             String home = parts[1];
                             try {
-                                outStream.writeObject(command);
-                                outStream.writeObject(home);
+                                outStream.writeObject(input);
+                                outStream.flush();
+
+                                String nomeFicheiro = "cliente_summary_" + home + ".txt";
+                                processFile(inStream, nomeFicheiro);
                                 
-                                String answer = (String) inStream.readObject();
-                                System.out.println("Server: " + answer);
                             } catch (Exception e) {
                                 System.out.println("Erro ao comunicar com o servidor.");
                             }
@@ -254,12 +247,12 @@ public class SpertaClient {
                             String home = parts[1];
                             String disp = parts[2];
                             try {
-                                outStream.writeObject(command);
-                                outStream.writeObject(home);
-                                outStream.writeObject(disp);
+                                outStream.writeObject(input);
+                                outStream.flush();
 
-                                String answer = (String) inStream.readObject();
-                                System.out.println("Server: " + answer);
+                                String nomeFicheiro = "cliente_log_" + home + "_" + disp + ".txt";
+                                processFile(inStream, nomeFicheiro);
+
                             } catch (Exception e) {
                                 System.out.println("Erro ao comunicar com o servidor.");
                             }
@@ -273,5 +266,52 @@ public class SpertaClient {
                             break;
 
                 }
+    }
+
+    private void processFile(ObjectInputStream inStream, String nomeFicheiroLocal) {
+        try {
+            String status = (String) inStream.readObject();
+            
+            if (status.equals("OK")) {
+                long fileSize = inStream.readLong();
+                FileOutputStream fileOut = new FileOutputStream(nomeFicheiroLocal);
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                long totalLido = 0;
+                
+                while (totalLido < fileSize && (bytesRead = inStream.read(buffer, 0, (int) Math.min(buffer.length, fileSize - totalLido))) != -1) {
+                    fileOut.write(buffer, 0, bytesRead);
+                    totalLido += bytesRead;
+                }
+                
+                fileOut.close();
+                System.out.println("Download concluído! Guardado como: " + nomeFicheiroLocal);
+                
+            } else {
+                System.out.print("Erro: ");
+                switch(status) {
+                    case "NOK": 
+                        System.out.println("Comando ou valores inválidos."); 
+                        break;
+                    case "NOHM": 
+                        System.out.println("A casa especificada não existe."); 
+                        break;
+                    case "NOPERM": 
+                        System.out.println("Não tem permissões para esta operação."); 
+                        break;
+                    case "NODATA": 
+                        System.out.println("Ainda não há dados registados."); 
+                        break;
+                    case "NOD": 
+                        System.out.println("O dispositivo não existe na casa."); 
+                        break;
+                    default: 
+                        System.out.println(status); 
+                        break;
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Erro ao tentar receber o ficheiro.");
+        }
     }
 }
