@@ -6,45 +6,66 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Scanner;
 
+//Cliente SpertaClient
+
 public class SpertaClient {
 
         public String user;
         public String pass;
         public static void main(String[] args) {
-            SpertaClient client = new SpertaClient();
+            if (args.length != 3) {
+            System.out.print("Erro:");
+            System.out.println("Formato exigido: SpertaClient <serverAddress> <user-id> <password>");
+            System.exit(-1);
+            }
 
-            client.startClient();
+            String serverAddress = args[0];
+            String user = args[1];
+            String pass = args[2];
+
+            String ip = serverAddress;
+            int port = 22345; // Default
+
+            if (serverAddress.contains(":")) {
+                String[] parts = serverAddress.split(":");
+                ip = parts[0];
+                port = Integer.parseInt(parts[1]);
+            }
+
+            SpertaClient client = new SpertaClient();
+            client.startClient(ip, port, user, pass);
         }
 
-    public void startClient() {
+    public void startClient(String ip, int port, String user, String pass) {
         Socket clientSocket = null;
 
         try {
-        clientSocket = new Socket("127.0.0.1", 23456);
+        clientSocket = new Socket(ip, port);
         System.out.println("Socket iniciada!");
 
         ObjectOutputStream outStream = new ObjectOutputStream(clientSocket.getOutputStream());
 		ObjectInputStream inStream = new ObjectInputStream(clientSocket.getInputStream());
         Boolean sucesso = false;
 
-        Scanner sc = new Scanner(System.in); //este scanner não se fecha para evitar conflitos com o teclado.
+        Scanner sc = new Scanner(System.in); // Este scanner não se fecha para evitar conflitos com o teclado.
 
-        while(!sucesso) {
-            String user = "";
-            String pass = "";
+        String currentUser = user;
+        String currentPass = pass;
+        Boolean firstTry = true;
+        int trys = 1;
 
-            while (user.trim().isEmpty()) {
-                System.out.print("Digite o seu username: ");
-                user = sc.nextLine();
-            }
+        outStream.writeObject(currentUser);
+        outStream.flush();
 
-            while (pass.trim().isEmpty()) {
-                System.out.print("Digite a sua passe: ");
-                pass = sc.nextLine();
-            }
+        while(!sucesso && trys <= 3) {
+            if (!firstTry) {
+                    System.out.println("Tentativa " + trys + "/3:");
+                    System.out.print("Password incorreta! Digite nova password para o user '" + currentUser + "': ");
+                    currentPass = sc.nextLine();
+                }
 
-            outStream.writeObject(user);
-            outStream.writeObject(pass);
+            outStream.writeObject(currentPass);
+            outStream.flush();
             String respostaAuth = (String) inStream.readObject(); 
 
             if(respostaAuth.equals("OK-NEW-USER") || respostaAuth.equals("OK-USER") || respostaAuth.equals("ATTESTATION OK")) {
@@ -53,8 +74,14 @@ public class SpertaClient {
                 System.out.println("Resposta do Servidor: " + respostaAuth);
             }
 
+            firstTry = false;
+            trys++;
         }
-                
+        if (trys > 3) {
+            System.out.println("Tentativas esgotadas! A encerrar...");
+            clientSocket.close();
+            return;
+        }  
         
         System.out.println("Login efetuado com sucesso!");
         Boolean running = true;

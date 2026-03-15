@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
 
-//Servidor myServer
+//Servidor SpertaServer
 
 public class SpertaServer {
 	private static final int MAX_TENTATIVAS = 3;
@@ -30,19 +30,30 @@ public class SpertaServer {
 
 	public static void main(String[] args) {
 		System.out.println("servidor: main");
-		SpertaServer server = new SpertaServer();
-		server.startServer();
+        int port = 22345; // Default
+
+        if (args.length == 1) {
+            try {
+                port = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                System.out.println("Erro: Porto tem de ser número. A usar default.");
+            }
+        }
+
+        SpertaServer server = new SpertaServer();
+        server.startServer(port); // Passa a variável
 	}
 
-	public void startServer() {
+	public void startServer(int port) {
 		ServerSocket sSoc = null;
 
-		try {
-			sSoc = new ServerSocket(23456);
-		} catch (IOException e) {
-			System.err.println(e.getMessage());
-			System.exit(-1);
-		}
+        try {
+            sSoc = new ServerSocket(port);
+            System.out.println("Servidor à escuta na porta: " + port);
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+            System.exit(-1);
+        }
 
 		while (true) {
 			try {
@@ -328,7 +339,7 @@ public class SpertaServer {
 				outStream.writeObject("NOHM");
 			} else if (!hasPermission(line, user, parts[2].substring(0, 1))) {
 				outStream.writeObject("NOPERM");
-			} else if (deviceExistsInHouse(line, parts[2])) {
+			} else if (!deviceExistsInHouse(line, parts[2])) {
 				outStream.writeObject("NOD");
 			} else {
 				sendLog(parts[1], parts[2], outStream);
