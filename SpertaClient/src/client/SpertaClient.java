@@ -1,5 +1,6 @@
 package SpertaClient.src.client;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -14,7 +15,7 @@ public class SpertaClient {
         public String pass;
         public static void main(String[] args) {
             if (args.length != 3) {
-            System.out.print("Erro:");
+            System.out.println("Erro!");
             System.out.println("Formato exigido: SpertaClient <serverAddress> <user-id> <password>");
             System.exit(-1);
             }
@@ -176,7 +177,7 @@ public class SpertaClient {
     private void processCommand(String command, String[] parts, String input, ObjectOutputStream outStream, ObjectInputStream inStream) {
         switch(command) {
                     case "CREATE":
-                        if(parts.length == 2 && parts[1].matches("^[a-zA-Z][a-zA-Z0-9]*$")) {
+                        if(parts.length == 2) {
                             //String home = parts[1];
 
                             try {
@@ -193,8 +194,7 @@ public class SpertaClient {
                             //
                         } else
                             System.out.println("Formato incorreto. Tente: CREATE <hm>");
-                            System.out.println("O nome da casa deve começar com uma letra!");
-                        break;
+                            break;
 
                     case "ADD":
                         if(parts.length == 4) {
@@ -258,9 +258,14 @@ public class SpertaClient {
                                 outStream.writeObject(input);
                                 outStream.flush();
 
-                                String nomeFicheiro = "cliente_summary_" + home + ".txt";
+                                File pastaSummaries = new File("summaries");
+                                if (!pastaSummaries.exists()) {
+                                    pastaSummaries.mkdirs();
+                                }
+
+                                String nomeFicheiro = "summaries/cliente_summary_" + home + ".txt";
                                 processFile(inStream, nomeFicheiro);
-                                
+
                             } catch (Exception e) {
                                 System.out.println("Erro ao comunicar com o servidor.");
                             }
