@@ -233,7 +233,7 @@ public class SpertaClient {
                         if(parts.length == 4 && parts[3].matches("^[0-9]+$")) {
                             int valor = Integer.parseInt(parts[3]);
                             
-                            if(valor == 0 || valor == 1 | (valor > 1 && valor <= 600) ) {
+                            if(valor >= 0 || valor <= 600) {
                                 try {
                                     outStream.writeObject(input);
                                     outStream.flush();
@@ -320,27 +320,27 @@ public class SpertaClient {
                 System.out.println("Download concluído! Guardado como: " + nomeFicheiroLocal);
                 
             } else {
-                System.out.print("Erro: ");
-                switch(status) {
-                    case "NOK": 
-                        System.out.println("Comando ou valores inválidos."); 
-                        break;
-                    case "NOHM": 
-                        System.out.println("A casa especificada não existe."); 
-                        break;
-                    case "NOPERM": 
-                        System.out.println("Não tem permissões para esta operação."); 
-                        break;
-                    case "NODATA": 
-                        System.out.println("Ainda não há dados registados."); 
-                        break;
-                    case "NOD": 
-                        System.out.println("O dispositivo não existe na casa."); 
-                        break;
-                    default: 
-                        System.out.println(status); 
-                        break;
-                }
+                System.out.println(status);
+                // switch(status) {
+                //     case "NOK": 
+                //         System.out.println("Comando ou valores inválidos."); 
+                //         break;
+                //     case "NOHM": 
+                //         System.out.println("A casa especificada não existe."); 
+                //         break;
+                //     case "NOPERM": 
+                //         System.out.println("Não tem permissões para esta operação."); 
+                //         break;
+                //     case "NODATA": 
+                //         System.out.println("Ainda não há dados registados."); 
+                //         break;
+                //     case "NOD": 
+                //         System.out.println("O dispositivo não existe na casa."); 
+                //         break;
+                //     default: 
+                //         System.out.println(status); 
+                //         break;
+                // }
             }
         } catch (Exception e) {
             System.out.println("Erro ao tentar receber o ficheiro.");

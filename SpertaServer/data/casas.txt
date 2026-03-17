@@ -1,4 +1,4 @@
 Casa1;iberia;alan: M|L,nuno:G; M1, M2,L1
 Casa2;nuno;alan: all; M1
-Casa3;rafael;iberia:all,alan:G;L1, L2
+Casa3;rafael;iberia:all,alan:G;L1, L2, M1, G1, M2, G2
 

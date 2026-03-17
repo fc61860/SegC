@@ -287,14 +287,15 @@ public class SpertaServer {
 			}
 
 			int value;
+			// verifica o valor
 			try {
 				value = Integer.parseInt(parts[3]);
 			} catch (NumberFormatException e) {
 				outStream.writeObject("NOK");
 				return;
 			}
-			// ]1, 600[
-			if (value <= 1 || value > 600) {
+			// [0, 600[
+			if (value < 0 || value > 600) {
 				outStream.writeObject("NOK");
 				return;
 			}
@@ -304,6 +305,8 @@ public class SpertaServer {
 				outStream.writeObject("NOHM");
 			} else if (!hasPermission(line, user, parts[2].substring(0, 1))) {
 				outStream.writeObject("NOPERM");
+			} else if (!deviceExistsInHouse(line, parts[2])) {
+				outStream.writeObject("NOD");
 			} else {
 				updatePlaceTimeInHouse(parts[1], parts[2], value);
 				outStream.writeObject("OK");
