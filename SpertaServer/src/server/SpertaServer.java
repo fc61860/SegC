@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 //Servidor SpertaServer
 
@@ -122,7 +124,7 @@ public class SpertaServer {
 
 		private static boolean autenticarCliente(String user, ObjectInputStream inStream,
 				ObjectOutputStream outStream) throws IOException, ClassNotFoundException {
-			int tentativas = MAX_TENTATIVAS;
+			int tentativas = 0;
 
 			String passwd = null;
 
@@ -156,14 +158,14 @@ public class SpertaServer {
 			}
 
 			// autenticação
-			while (tentativas > 0) {
+			while (tentativas < MAX_TENTATIVAS) {
 				passwd = (String) inStream.readObject();
 				if (correctPassword.equals(passwd)) {
 					outStream.writeObject("ATTESTATION OK");
 					outStream.flush();
 					return true;
 				} else {
-					tentativas--;
+					tentativas++;
 					if (tentativas > 0) {
 						outStream.writeObject("WRONG-PWD-" + tentativas);
 						outStream.flush();
@@ -709,7 +711,11 @@ public class SpertaServer {
 
 			BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true)); // append mode
 
-			writer.write(value);
+			LocalDateTime agora = LocalDateTime.now();
+            DateTimeFormatter formatador = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            String dataHora = agora.format(formatador);
+
+			writer.write(dataHora + ", " + value);
 			writer.newLine();
 
 			writer.close();

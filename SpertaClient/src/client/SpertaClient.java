@@ -67,7 +67,14 @@ public class SpertaClient {
 
             outStream.writeObject(currentPass);
             outStream.flush();
-            String respostaAuth = (String) inStream.readObject(); 
+
+            String respostaAuth = "";
+            try {
+                respostaAuth = (String) inStream.readObject(); 
+            } catch (Exception e) {
+                System.out.println("O servidor encerrou a ligação por excesso de tentativas.");
+                break; 
+            }
 
             if(respostaAuth.equals("OK-NEW-USER") || respostaAuth.equals("OK-USER") || respostaAuth.equals("ATTESTATION OK")) {
                 sucesso = true;
@@ -78,7 +85,7 @@ public class SpertaClient {
             firstTry = false;
             trys++;
         }
-        if (trys > 3) {
+        if (!sucesso) {
             System.out.println("Tentativas esgotadas! A encerrar...");
             clientSocket.close();
             return;
