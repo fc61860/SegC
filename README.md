@@ -10,5 +10,7 @@ O Problema: O teu cliente não envia o tamanho do seu próprio ficheiro executá
 2. Verificar os outputs de RT e RH e a sua respota no caso de correr tudo bem ou de não haver dados a guardar.
 3. Todos os comandos estão funcionais e têm o output esperado
 4. Corrigir o output nos .csv
+5. Ao fazer RT de uma casa sem dispositivos o server cria um ficheiro vazio e quando adicionas um dispositivo e fazes novamente RT ele
+volta a escrever esse ficheiro e coloca-o na pasta certa
 (Opcional)
 4. Corrigir a ordem de adição de dispositivos a uma casa, se possivel. EX: Ao adicionar M1 depois G1 e depois M2 o ficheiro estados.txt guarda M1, G1, M2 e ficaria melhor se guardasse M1, M2, G1

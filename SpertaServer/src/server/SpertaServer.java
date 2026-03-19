@@ -224,7 +224,7 @@ public class SpertaServer {
 			} else {
 				BufferedWriter writer = new BufferedWriter(new FileWriter(FICHEIRO_CASAS, true));
 
-				String newLine = parts[1] + ";" + user + ";;" + "\n";
+				String newLine = parts[1] + ";" + user + ";;";
 
 				writer.write(newLine);
 				writer.newLine();
@@ -773,43 +773,49 @@ public class SpertaServer {
 			List<String> devices = new ArrayList<>();
 			boolean allAccess = false;
 
-			String[] users = permissions.split(",");
-			for (String u : users) {
-				String[] uparts = u.split(":");
-				String uname = uparts[0].trim();
-				String perms = uparts[1].trim();
+			if (!permissions.isEmpty()) {
+				// Get permissions
+				String[] users = permissions.split(",");
+				for (String u : users) {
+					String[] uparts = u.split(":");
+					String uname = uparts[0].trim();
+					String perms = uparts[1].trim();
 
-				if (uname.equals(user)) {
-					if (perms.equals("all")) {
-						allAccess = true;
-						break;
+					if (uname.equals(user)) {
+						if (perms.equals("all")) {
+							allAccess = true;
+							break;
+						}
 					}
 				}
-			}
+				if (!devicesStr.isEmpty()) {
+					// Get devices the user can access
+					String[] devList = devicesStr.split(",");
+					for (String d : devList) {
+						d = d.trim();
+						if (allAccess || isOwner(line, user)) {
+							devices.add(d);
+						} else {
+							for (String u : users) {
+								String[] uparts = u.split(":");
+								String uname = uparts[0].trim();
+								String perms = uparts[1].trim();
 
-			// Get devices the user can access
-			String[] devList = devicesStr.split(",");
-			for (String d : devList) {
-				d = d.trim();
-				if (allAccess || isOwner(line, user)) {
-					devices.add(d);
-				} else {
-					for (String u : users) {
-						String[] uparts = u.split(":");
-						String uname = uparts[0].trim();
-						String perms = uparts[1].trim();
-
-						if (uname.equals(user)) {
-							String[] userPerms = perms.split("\\|");
-							for (String p : userPerms) {
-								if (d.startsWith(p)) {
-									devices.add(d);
+								if (uname.equals(user)) {
+									String[] userPerms = perms.split("\\|");
+									for (String p : userPerms) {
+										if (d.startsWith(p)) {
+											devices.add(d);
+										}
+									}
 								}
 							}
 						}
 					}
 				}
 			}
+
+			
 
 			// Read last value of each device
 			boolean hasData = false;
