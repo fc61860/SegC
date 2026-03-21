@@ -13,6 +13,7 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
@@ -23,39 +24,45 @@ import java.time.format.DateTimeFormatter;
 
 public class SpertaServer {
 	private static final int MAX_TENTATIVAS = 3;
-	private static final String FICHEIRO_USERS = "SpertaServer\\data\\users.txt";
-	private static final String FICHEIRO_CASAS = "SpertaServer\\data\\casas.txt";
-	private static final String FICHEIRO_ESTADOS = "SpertaServer\\data\\estados.txt";
-	private static final String DIRETORIA_LOGS = "logs/";
+	private static final String FICHEIRO_USERS_WINDOWS = "SpertaServer\\data\\users.txt";
+	private static final String FICHEIRO_CASAS_WINDOWS = "SpertaServer\\data\\casas.txt";
+	private static final String FICHEIRO_ESTADOS_WINDOWS = "SpertaServer\\data\\estados.txt";
+	private static final String FICHEIRO_USERS_LINUX = "SpertaServer/data/users.txt";
+	private static final String FICHEIRO_CASAS_LINUX = "SpertaServer/data/casas.txt";
+	private static final String FICHEIRO_ESTADOS_LINUX = "SpertaServer/data/estados.txt";
+
+	private static final String DIRETORIA_LOGS = "SpertaServer/data/logs/";
+
 	private static final Set<String> VALID_PERMS = Set.of("E", "G", "L", "M", "P", "S", "all");
 	private static final Set<String> VALID_SECS = Set.of("E", "G", "L", "M", "P", "S");
 
 	public static void main(String[] args) {
 		System.out.println("Servidor: main");
-        int port = 22345; // Default
+		int port = 22345; // Default
 
-        if (args.length == 1) {
-            try {
-                port = Integer.parseInt(args[0]);
-            } catch (NumberFormatException e) {
-                System.out.println("Erro: Porto tem de ser número. A usar default.");
-            }
-        }
+		if (args.length == 1) {
+			try {
+				port = Integer.parseInt(args[0]);
+			} catch (NumberFormatException e) {
+				System.out.println("Erro: Porto tem de ser número. A usar default.");
+			}
+		}
 
-        SpertaServer server = new SpertaServer();
-        server.startServer(port); // Passa a variável
+		SpertaServer server = new SpertaServer();
+		server.startServer(port); // Passa a variável
 	}
 
 	public void startServer(int port) {
+		// inicializarEstrutura(); isto estraga tudo e nao sei por que
 		ServerSocket sSoc = null;
 
-        try {
-            sSoc = new ServerSocket(port);
-            System.out.println("Servidor à escuta na porta: " + port);
-        } catch (IOException e) {
-            System.err.println(e.getMessage());
-            System.exit(-1);
-        }
+		try {
+			sSoc = new ServerSocket(port);
+			System.out.println("Servidor à escuta na porta: " + port);
+		} catch (IOException e) {
+			System.err.println(e.getMessage());
+			System.exit(-1);
+		}
 
 		while (true) {
 			try {
@@ -68,6 +75,38 @@ public class SpertaServer {
 
 		}
 		// sSoc.close();
+	}
+
+	private static void inicializarEstrutura() {
+		try {
+			// Create logs directory
+			File logsDir = new File(DIRETORIA_LOGS);
+			if (!logsDir.exists()) {
+				logsDir.mkdirs();
+			}
+
+			// Create users file
+			File usersFile = new File(FICHEIRO_USERS_LINUX);
+			if (!usersFile.exists()) {
+				usersFile.createNewFile();
+			}
+
+			// Create casas file
+			File casasFile = new File(FICHEIRO_CASAS_LINUX);
+			if (!casasFile.exists()) {
+				casasFile.createNewFile();
+			}
+
+			// Create estados file
+			File estadosFile = new File(FICHEIRO_ESTADOS_LINUX);
+			if (!estadosFile.exists()) {
+				estadosFile.createNewFile();
+			}
+
+		} catch (IOException e) {
+			System.err.println("Erro ao inicializar ficheiros: " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	// Threads utilizadas para comunicacao com os clientes
@@ -128,7 +167,7 @@ public class SpertaServer {
 
 			String passwd = null;
 
-			File file = new File(FICHEIRO_USERS);
+			File file = new File(FICHEIRO_USERS_LINUX);
 			if (!file.exists())
 				file.createNewFile();
 
@@ -205,7 +244,8 @@ public class SpertaServer {
 				case "RH":
 					receberHistorico(user, outStream, parts);
 					break;
-
+				default:
+					outStream.writeObject("NOCOMMAND");
 			}
 		}
 
@@ -219,10 +259,10 @@ public class SpertaServer {
 			}
 
 			// Casa ja existe
-			if (findHouseLine(FICHEIRO_CASAS, parts[1]) != null) {
+			if (findHouseLine(FICHEIRO_CASAS_LINUX, parts[1]) != null) {
 				outStream.writeObject("NOK");
 			} else {
-				BufferedWriter writer = new BufferedWriter(new FileWriter(FICHEIRO_CASAS, true));
+				BufferedWriter writer = new BufferedWriter(new FileWriter(FICHEIRO_CASAS_LINUX, true));
 
 				String newLine = parts[1] + ";" + user + ";;";
 
@@ -245,7 +285,7 @@ public class SpertaServer {
 				return;
 			}
 
-			String line = findHouseLine(FICHEIRO_CASAS, parts[2]);
+			String line = findHouseLine(FICHEIRO_CASAS_LINUX, parts[2]);
 			if (line == null) {
 				outStream.writeObject("NOHM");
 			} else if (!userExists(parts[1])) {
@@ -269,7 +309,7 @@ public class SpertaServer {
 				outStream.writeObject("NOK");
 				return;
 			}
-			String line = findHouseLine(FICHEIRO_CASAS, parts[1]);
+			String line = findHouseLine(FICHEIRO_CASAS_LINUX, parts[1]);
 			if (line == null) {
 				outStream.writeObject("NOHM");
 			} else if (!isOwner(line, user)) {
@@ -302,7 +342,7 @@ public class SpertaServer {
 				return;
 			}
 
-			String line = findHouseLine(FICHEIRO_CASAS, parts[1]);
+			String line = findHouseLine(FICHEIRO_CASAS_LINUX, parts[1]);
 			if (line == null) {
 				outStream.writeObject("NOHM");
 			} else if (!hasPermission(line, user, parts[2].substring(0, 1))) {
@@ -322,7 +362,7 @@ public class SpertaServer {
 				outStream.writeObject("NOK");
 				return;
 			}
-			String line = findHouseLine(FICHEIRO_CASAS, parts[1]);
+			String line = findHouseLine(FICHEIRO_CASAS_LINUX, parts[1]);
 			if (line == null) {
 				outStream.writeObject("NOHM");
 			} else if (!userExistInHouse(line, user)) {
@@ -340,7 +380,7 @@ public class SpertaServer {
 				outStream.writeObject("NOK");
 				return;
 			}
-			String line = findHouseLine(FICHEIRO_CASAS, parts[1]);
+			String line = findHouseLine(FICHEIRO_CASAS_LINUX, parts[1]);
 			if (line == null) {
 				outStream.writeObject("NOHM");
 			} else if (!hasPermission(line, user, parts[2].substring(0, 1))) {
@@ -412,7 +452,7 @@ public class SpertaServer {
 		}
 
 		private static boolean userExists(String user) throws FileNotFoundException {
-			File file = new File(FICHEIRO_USERS);
+			File file = new File(FICHEIRO_USERS_LINUX);
 
 			Scanner sc = new Scanner(file);
 			while (sc.hasNextLine()) {
@@ -428,67 +468,69 @@ public class SpertaServer {
 		}
 
 		private static String addPermission(String permissions, String user, String newPerm) {
-            // 1. Se não há permissões nenhumas ainda, é só adicionar e devolver!
-            if (permissions == null || permissions.trim().isEmpty()) {
-                return user + ":" + newPerm;
-            }
+			// 1. Se não há permissões nenhumas ainda, é só adicionar e devolver!
+			if (permissions == null || permissions.trim().isEmpty()) {
+				return user + ":" + newPerm;
+			}
 
-            String[] users = permissions.split(",");
-            List<String> updatedUsers = new ArrayList<>();
-            boolean userFound = false;
+			String[] users = permissions.split(",");
+			List<String> updatedUsers = new ArrayList<>();
+			boolean userFound = false;
 
-            for (String u : users) {
-                if (u.trim().isEmpty()) continue; // Ignora lixo ou espaços em branco
-                
-                String[] parts = u.split(":");
-                // Se a estrutura estiver mal formada, guarda como está e avança
-                if (parts.length != 2) {
-                    updatedUsers.add(u.trim());
-                    continue;
-                }
+			for (String u : users) {
+				if (u.trim().isEmpty())
+					continue; // Ignora lixo ou espaços em branco
 
-                String currentUser = parts[0].trim();
-                String currentPerms = parts[1].trim();
+				String[] parts = u.split(":");
+				// Se a estrutura estiver mal formada, guarda como está e avança
+				if (parts.length != 2) {
+					updatedUsers.add(u.trim());
+					continue;
+				}
 
-                if (currentUser.equals(user)) {
-                    userFound = true; // Encontrámos o utilizador!
-                    
-                    // Se ele já for "all" ou se lhe formos dar "all", fica "all"
-                    if (currentPerms.equals("all") || newPerm.equals("all")) {
-                        updatedUsers.add(user + ":all");
-                    } else {
-                        // Verifica se a nova permissão já lá está
-                        String[] perms = currentPerms.split("\\|");
-                        boolean exists = false;
-                        for (String p : perms) {
-                            if (p.equals(newPerm)) {
-                                exists = true; 
-                                break;
-                            }
-                        }
-                        if (!exists) {
-                            currentPerms += "|" + newPerm; // Acrescenta a nova
-                        }
-                        updatedUsers.add(user + ":" + currentPerms);
-                    }
-                } else {
-                    updatedUsers.add(u.trim()); // É outro utilizador, mantemos igual
-                }
-            }
+				String currentUser = parts[0].trim();
+				String currentPerms = parts[1].trim();
 
-            // 2. Se passámos por todos e o utilizador não existia na lista, acrescentamos agora!
-            if (!userFound) {
-                updatedUsers.add(user + ":" + newPerm);
-            }
+				if (currentUser.equals(user)) {
+					userFound = true; // Encontrámos o utilizador!
 
-            // Junta tudo de novo separadinho por vírgulas. Magia do Java 8!
-            return String.join(",", updatedUsers);
-        }
+					// Se ele já for "all" ou se lhe formos dar "all", fica "all"
+					if (currentPerms.equals("all") || newPerm.equals("all")) {
+						updatedUsers.add(user + ":all");
+					} else {
+						// Verifica se a nova permissão já lá está
+						String[] perms = currentPerms.split("\\|");
+						boolean exists = false;
+						for (String p : perms) {
+							if (p.equals(newPerm)) {
+								exists = true;
+								break;
+							}
+						}
+						if (!exists) {
+							currentPerms += "|" + newPerm; // Acrescenta a nova
+						}
+						updatedUsers.add(user + ":" + currentPerms);
+					}
+				} else {
+					updatedUsers.add(u.trim()); // É outro utilizador, mantemos igual
+				}
+			}
+
+			// 2. Se passámos por todos e o utilizador não existia na lista, acrescentamos
+			// agora!
+			if (!userFound) {
+				updatedUsers.add(user + ":" + newPerm);
+			}
+
+			// Junta tudo de novo separadinho por vírgulas. Magia do Java 8!
+			return String.join(",", updatedUsers);
+		}
 
 		public static void updatePermissions(String user, String houseName, String newPermissions)
 				throws IOException {
 
-			File inputFile = new File(FICHEIRO_CASAS);
+			File inputFile = new File(FICHEIRO_CASAS_LINUX);
 			File tempFile = new File("temp.txt");
 
 			BufferedReader reader = new BufferedReader(new FileReader(inputFile));
@@ -542,7 +584,7 @@ public class SpertaServer {
 
 		private static void addDevice(String houseName, String place) throws IOException {
 
-			File input = new File(FICHEIRO_CASAS);
+			File input = new File(FICHEIRO_CASAS_LINUX);
 			File temp = new File("temp.txt");
 
 			BufferedReader reader = new BufferedReader(new FileReader(input));
@@ -561,8 +603,11 @@ public class SpertaServer {
 					String newDevice = nextDevice(devices, place);
 					// isto ta aqui dentro, se falhar falham os tres mas sinceramente e para o
 					// melhor
+					System.out.println("Primeirp");
 					addDeviceWithDefaultTime(houseName, newDevice);
+					System.out.println("Seguyn");
 					createDeviceLog(houseName, newDevice);
+					System.out.println("Terce");
 					if (!devices.isEmpty()) {
 						devices = devices + ", " + newDevice;
 					} else {
@@ -588,7 +633,7 @@ public class SpertaServer {
 		private static void updatePlaceTimeInHouse(String houseName, String place, int newTime)
 				throws IOException {
 
-			File inputFile = new File(FICHEIRO_ESTADOS);
+			File inputFile = new File(FICHEIRO_ESTADOS_LINUX);
 			File tempFile = new File("temp.txt");
 
 			BufferedReader reader = new BufferedReader(new FileReader(inputFile));
@@ -641,60 +686,60 @@ public class SpertaServer {
 		}
 
 		private static void addDeviceWithDefaultTime(String houseName, String device) throws IOException {
-            File input = new File(FICHEIRO_ESTADOS);
-            
-            if (!input.exists()) {
-                input.createNewFile();
-            }
-            
-            File temp = new File("SpertaServer\\data\\temp_times.txt");
-            BufferedReader reader = new BufferedReader(new FileReader(input));
-            BufferedWriter writer = new BufferedWriter(new FileWriter(temp));
+			File input = new File(FICHEIRO_ESTADOS_LINUX);
 
-            String line;
-            boolean houseFound = false; 
+			if (!input.exists()) {
+				input.createNewFile();
+			}
 
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(";", -1); 
+			File temp = new File("temp_times.txt");
+			BufferedReader reader = new BufferedReader(new FileReader(input));
+			BufferedWriter writer = new BufferedWriter(new FileWriter(temp));
+
+			String line;
+			boolean houseFound = false;
+
+			while ((line = reader.readLine()) != null) {
+				String[] parts = line.split(";", -1);
 				String devices = null;
 
-                if (parts[0].trim().equals(houseName)) {
-                    houseFound = true;
-					if(parts.length > 1) {
+				if (parts[0].trim().equals(houseName)) {
+					houseFound = true;
+					if (parts.length > 1) {
 						devices = parts[1].trim();
 					} else
 						devices = "";
-                    
-                    if (!devices.isEmpty()) {
-                        devices = devices + ", " + device + ":0";
-                    } else {
-                        devices = device + ":0";
-                    }
 
-                    line = parts[0] + ";" + devices;
-                }
+					if (!devices.isEmpty()) {
+						devices = devices + ", " + device + ":0";
+					} else {
+						devices = device + ":0";
+					}
 
-                writer.write(line);
-                writer.newLine();
-            }
+					line = parts[0] + ";" + devices;
+				}
 
-            if (!houseFound) {
-                writer.write(houseName + ";" + device + ":0");
-                writer.newLine();
-            }
+				writer.write(line);
+				writer.newLine();
+			}
 
-            reader.close();
-            writer.close();
+			if (!houseFound) {
+				writer.write(houseName + ";" + device + ":0");
+				writer.newLine();
+			}
 
-            input.delete();
-            temp.renameTo(input);
-        }
+			reader.close();
+			writer.close();
+
+			input.delete();
+			temp.renameTo(input);
+		}
 
 		private static void createDeviceLog(String houseName, String device) throws IOException {
 			File pastaLogs = new File(DIRETORIA_LOGS);
-            if (!pastaLogs.exists()) {
-                pastaLogs.mkdirs();
-            }
+			if (!pastaLogs.exists()) {
+				pastaLogs.mkdirs();
+			}
 			String fileName = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
 			File logFile = new File(fileName);
 
@@ -712,8 +757,8 @@ public class SpertaServer {
 			BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true)); // append mode
 
 			LocalDateTime agora = LocalDateTime.now();
-            DateTimeFormatter formatador = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            String dataHora = agora.format(formatador);
+			DateTimeFormatter formatador = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+			String dataHora = agora.format(formatador);
 
 			writer.write(dataHora + ", " + value);
 			writer.newLine();
@@ -764,18 +809,15 @@ public class SpertaServer {
 
 		private static void sendRecentDeviceStatesFromLine(String line, String user, ObjectOutputStream outStream)
 				throws IOException {
-
+			Boolean isOwner = isOwner(line, user);
 			String[] parts = line.split(";", -1);
 			String houseName = parts[0].trim();
 			String permissions = parts[2].trim();
 			String devicesStr = parts[3].trim();
-
-			List<String> devices = new ArrayList<>();
 			boolean allAccess = false;
-
-			if (!permissions.isEmpty()) {
-				// Get permissions
-				String[] users = permissions.split(",");
+			Set<Character> permissionSet = new HashSet<>();
+			String[] users = permissions.split(",");
+			if (!permissions.isEmpty() && !isOwner) {
 				for (String u : users) {
 					String[] uparts = u.split(":");
 					String uname = uparts[0].trim();
@@ -785,38 +827,35 @@ public class SpertaServer {
 						if (perms.equals("all")) {
 							allAccess = true;
 							break;
-						}
-					}
-				}
-				if (!devicesStr.isEmpty()) {
-					// Get devices the user can access
-					String[] devList = devicesStr.split(",");
-					for (String d : devList) {
-						d = d.trim();
-						if (allAccess || isOwner(line, user)) {
-							devices.add(d);
 						} else {
-							for (String u : users) {
-								String[] uparts = u.split(":");
-								String uname = uparts[0].trim();
-								String perms = uparts[1].trim();
+							String[] permss = permissions.split("\\|");
 
-								if (uname.equals(user)) {
-									String[] userPerms = perms.split("\\|");
-									for (String p : userPerms) {
-										if (d.startsWith(p)) {
-											devices.add(d);
-										}
-									}
-								}
+							for (String p : permss) {
+								permissionSet.add(p.charAt(0));
 							}
 						}
 					}
 				}
 			}
+			List<String> devices = new ArrayList<>();
 
-			
+			if (!devicesStr.isEmpty()) {
+				// Get devices the user can access
+				String[] devList = devicesStr.split(",");
+				for (String d : devList) {
+					d = d.trim();
+					if (allAccess || isOwner(line, user)) {
+						devices.add(d);
+					} else {
+						char devicePrefix = d.charAt(0);
 
+						if (permissionSet.contains(devicePrefix)) {
+							devices.add(d);
+						}
+					}
+				}
+			}
+System.out.println(devices);
 			// Read last value of each device
 			boolean hasData = false;
 			File summary = new File(houseName + "_" + user + "_summary.txt");
@@ -825,6 +864,7 @@ public class SpertaServer {
 			for (String device : devices) {
 				String logFile = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
 				String lastLine = getLastLine(logFile);
+				System.out.println(lastLine);
 
 				if (lastLine != null && !lastLine.trim().isEmpty()) {
 					writer.write(device + ":" + lastLine);
@@ -895,5 +935,6 @@ public class SpertaServer {
 			outStream.flush();
 			fileIn.close();
 		}
+
 	}
 }
