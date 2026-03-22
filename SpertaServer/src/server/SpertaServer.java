@@ -1,4 +1,3 @@
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.EOFException;
@@ -20,23 +19,28 @@ import java.util.Set;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-//Servidor SpertaServer
-
+/**
+ * Classe principal do servidor SpertaServer.
+ * Responsável por inicializar o servidor, aceitar conexões de clientes e gerir
+ * a autenticação, comandos e persistência de dados.
+ */
 public class SpertaServer {
 	private static final int MAX_TENTATIVAS = 3;
-	private static final String FICHEIRO_USERS_WINDOWS = "SpertaServer\\data\\users.txt";
-	private static final String FICHEIRO_CASAS_WINDOWS = "SpertaServer\\data\\casas.txt";
-	private static final String FICHEIRO_ESTADOS_WINDOWS = "SpertaServer\\data\\estados.txt";
-	private static final String FICHEIRO_USERS_LINUX = "SpertaServer/data/users.txt";
-	private static final String FICHEIRO_CASAS_LINUX = "SpertaServer/data/casas.txt";
-	private static final String FICHEIRO_ESTADOS_LINUX = "SpertaServer/data/estados.txt";
-	private static final String FICHEIRO_CLIENTSIZE_LINUX = "SpertaServer/data/client_size.txt";
+	private static final String FICHEIRO_USERS = "SpertaServer/data/users.txt";
+	private static final String FICHEIRO_CASAS = "SpertaServer/data/casas.txt";
+	private static final String FICHEIRO_ESTADOS = "SpertaServer/data/estados.txt";
+	private static final String FICHEIRO_CLIENTSIZE = "SpertaServer/data/client_size.txt";
 
 	private static final String DIRETORIA_LOGS = "SpertaServer/data/logs/";
 
 	private static final Set<String> VALID_PERMS = Set.of("E", "G", "L", "M", "P", "S", "all");
 	private static final Set<String> VALID_SECS = Set.of("E", "G", "L", "M", "P", "S");
 
+	/**
+	 * Método principal. Inicia o servidor na porta especificada (ou default).
+	 * 
+	 * @param args Argumentos de linha de comando (opcional: porta)
+	 */
 	public static void main(String[] args) {
 		System.out.println("Servidor: main");
 		int port = 22345; // Default
@@ -53,6 +57,11 @@ public class SpertaServer {
 		server.startServer(port); // Passa a variável
 	}
 
+	/**
+	 * Inicia o servidor na porta especificada e aceita conexões de clientes.
+	 * 
+	 * @param port Porta TCP para escutar.
+	 */
 	public void startServer(int port) {
 		inicializarEstrutura();
 		ServerSocket sSoc = null;
@@ -78,6 +87,10 @@ public class SpertaServer {
 		// sSoc.close();
 	}
 
+	/**
+	 * Inicializa a estrutura de diretórios e ficheiros necessários ao funcionamento
+	 * do servidor.
+	 */
 	private static void inicializarEstrutura() {
 		try {
 
@@ -87,13 +100,13 @@ public class SpertaServer {
 			File logsDir = new File(DIRETORIA_LOGS);
 			logsDir.mkdirs();
 
-			File usersFile = new File(FICHEIRO_USERS_LINUX);
+			File usersFile = new File(FICHEIRO_USERS);
 			usersFile.createNewFile();
 
-			File casasFile = new File(FICHEIRO_CASAS_LINUX);
+			File casasFile = new File(FICHEIRO_CASAS);
 			casasFile.createNewFile();
 
-			File estadosFile = new File(FICHEIRO_ESTADOS_LINUX);
+			File estadosFile = new File(FICHEIRO_ESTADOS);
 			estadosFile.createNewFile();
 
 		} catch (IOException e) {
@@ -102,7 +115,9 @@ public class SpertaServer {
 		}
 	}
 
-	// Threads utilizadas para comunicacao com os clientes
+	/**
+	 * Thread responsável por tratar a comunicação com um cliente.
+	 */
 	class ServerThread extends Thread {
 
 		private Socket socket = null;
@@ -112,12 +127,16 @@ public class SpertaServer {
 			System.out.println("thread do server para cada cliente");
 		}
 
+		/**
+		 * Executa a lógica de comunicação com o cliente: atestação, autenticação e
+		 * processamento de comandos.
+		 */
 		public void run() {
 			try {
 				ObjectOutputStream outStream = new ObjectOutputStream(socket.getOutputStream());
 				ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
 				long clientSize = inStream.readLong();
-				BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CLIENTSIZE_LINUX));
+				BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CLIENTSIZE));
 
 				String line = reader.readLine(); // "SpertaClient:4096"
 				String[] parts = line.split(":");
@@ -171,13 +190,24 @@ public class SpertaServer {
 			}
 		}
 
+		/**
+		 * Autentica o cliente, permitindo criação de novo utilizador ou validação de
+		 * password.
+		 * 
+		 * @param user      Nome de utilizador
+		 * @param inStream  Stream de entrada do cliente
+		 * @param outStream Stream de saída para o cliente
+		 * @return true se autenticado com sucesso, false caso contrário
+		 * @throws IOException
+		 * @throws ClassNotFoundException
+		 */
 		private static boolean autenticarCliente(String user, ObjectInputStream inStream,
 				ObjectOutputStream outStream) throws IOException, ClassNotFoundException {
 			int tentativas = 0;
 
 			String passwd = null;
 
-			File file = new File(FICHEIRO_USERS_LINUX);
+			File file = new File(FICHEIRO_USERS);
 			if (!file.exists())
 				file.createNewFile();
 
@@ -227,6 +257,15 @@ public class SpertaServer {
 			return false;
 		}
 
+		/**
+		 * Processa comandos recebidos do cliente e executa a ação correspondente.
+		 * 
+		 * @param user      Utilizador autenticado
+		 * @param inStream  Stream de entrada do cliente
+		 * @param outStream Stream de saída para o cliente
+		 * @throws IOException
+		 * @throws ClassNotFoundException
+		 */
 		private static void processCommand(String user, ObjectInputStream inStream, ObjectOutputStream outStream)
 				throws IOException, ClassNotFoundException {
 
@@ -261,6 +300,15 @@ public class SpertaServer {
 			}
 		}
 
+		/**
+		 * Cria uma nova casa associada ao utilizador.
+		 * 
+		 * @param user      Utilizador
+		 * @param outStream Stream de saída para o cliente
+		 * @param parts     Argumentos do comando
+		 * @throws IOException
+		 * @throws ClassNotFoundException
+		 */
 		private static void criarCasa(String user, ObjectOutputStream outStream, String[] parts)
 				throws IOException, ClassNotFoundException {
 			// teste de input
@@ -271,10 +319,10 @@ public class SpertaServer {
 			}
 
 			// Casa ja existe
-			if (findHouseLine(FICHEIRO_CASAS_LINUX, parts[1]) != null) {
+			if (findHouseLine(FICHEIRO_CASAS, parts[1]) != null) {
 				outStream.writeObject("NOK");
 			} else {
-				BufferedWriter writer = new BufferedWriter(new FileWriter(FICHEIRO_CASAS_LINUX, true));
+				BufferedWriter writer = new BufferedWriter(new FileWriter(FICHEIRO_CASAS, true));
 
 				String newLine = parts[1] + ";" + user + ";;";
 
@@ -287,6 +335,15 @@ public class SpertaServer {
 			}
 		}
 
+		/**
+		 * Adiciona um utilizador a uma casa com permissões específicas.
+		 * 
+		 * @param user      Utilizador que executa o comando
+		 * @param outStream Stream de saída para o cliente
+		 * @param parts     Argumentos do comando
+		 * @throws IOException
+		 * @throws ClassNotFoundException
+		 */
 		private static void adicionarUtilizador(String user, ObjectOutputStream outStream, String[] parts)
 				throws IOException, ClassNotFoundException {
 
@@ -300,7 +357,7 @@ public class SpertaServer {
 				outStream.writeObject("NOK");
 				return;
 			}
-			String line = findHouseLine(FICHEIRO_CASAS_LINUX, parts[2]);
+			String line = findHouseLine(FICHEIRO_CASAS, parts[2]);
 			if (line == null) {
 				outStream.writeObject("NOHM");
 			} else if (!userExists(parts[1])) {
@@ -315,6 +372,15 @@ public class SpertaServer {
 
 		}
 
+		/**
+		 * Regista um novo dispositivo numa casa.
+		 * 
+		 * @param user      Utilizador
+		 * @param outStream Stream de saída para o cliente
+		 * @param parts     Argumentos do comando
+		 * @throws IOException
+		 * @throws ClassNotFoundException
+		 */
 		private static void registarDispositivo(String user, ObjectOutputStream outStream, String[] parts)
 				throws IOException, ClassNotFoundException {
 			// teste de input
@@ -323,7 +389,7 @@ public class SpertaServer {
 				outStream.writeObject("NOK");
 				return;
 			}
-			String line = findHouseLine(FICHEIRO_CASAS_LINUX, parts[1]);
+			String line = findHouseLine(FICHEIRO_CASAS, parts[1]);
 			if (line == null) {
 				outStream.writeObject("NOHM");
 			} else if (!isOwner(line, user)) {
@@ -334,6 +400,15 @@ public class SpertaServer {
 			}
 		}
 
+		/**
+		 * Regista um valor para um dispositivo numa casa.
+		 * 
+		 * @param user      Utilizador
+		 * @param outStream Stream de saída para o cliente
+		 * @param parts     Argumentos do comando
+		 * @throws IOException
+		 * @throws ClassNotFoundException
+		 */
 		private static void envioValor(String user, ObjectOutputStream outStream, String[] parts)
 				throws IOException, ClassNotFoundException {
 			// teste de input
@@ -356,7 +431,7 @@ public class SpertaServer {
 				return;
 			}
 
-			String line = findHouseLine(FICHEIRO_CASAS_LINUX, parts[1]);
+			String line = findHouseLine(FICHEIRO_CASAS, parts[1]);
 			if (line == null) {
 				outStream.writeObject("NOHM");
 			} else if (!hasPermission(line, user, parts[2].substring(0, 1))) {
@@ -369,6 +444,15 @@ public class SpertaServer {
 			}
 		}
 
+		/**
+		 * Envia ao cliente os estados recentes dos dispositivos de uma casa.
+		 * 
+		 * @param user      Utilizador
+		 * @param outStream Stream de saída para o cliente
+		 * @param parts     Argumentos do comando
+		 * @throws IOException
+		 * @throws ClassNotFoundException
+		 */
 		private static void receberTemp(String user, ObjectOutputStream outStream, String[] parts)
 				throws IOException, ClassNotFoundException {
 			// teste de input
@@ -376,7 +460,7 @@ public class SpertaServer {
 				outStream.writeObject("NOK");
 				return;
 			}
-			String line = findHouseLine(FICHEIRO_CASAS_LINUX, parts[1]);
+			String line = findHouseLine(FICHEIRO_CASAS, parts[1]);
 			if (line == null) {
 				outStream.writeObject("NOHM");
 			} else if (!userExistInHouse(line, user)) {
@@ -387,6 +471,15 @@ public class SpertaServer {
 
 		}
 
+		/**
+		 * Envia ao cliente o histórico de um dispositivo de uma casa.
+		 * 
+		 * @param user      Utilizador
+		 * @param outStream Stream de saída para o cliente
+		 * @param parts     Argumentos do comando
+		 * @throws IOException
+		 * @throws ClassNotFoundException
+		 */
 		private static void receberHistorico(String user, ObjectOutputStream outStream, String[] parts)
 				throws IOException, ClassNotFoundException {
 			// teste de input
@@ -394,7 +487,7 @@ public class SpertaServer {
 				outStream.writeObject("NOK");
 				return;
 			}
-			String line = findHouseLine(FICHEIRO_CASAS_LINUX, parts[1]);
+			String line = findHouseLine(FICHEIRO_CASAS, parts[1]);
 			if (line == null) {
 				outStream.writeObject("NOHM");
 			} else if (!hasPermission(line, user, parts[2].substring(0, 1))) {
@@ -406,6 +499,14 @@ public class SpertaServer {
 			}
 		}
 
+		/**
+		 * Procura e devolve a linha correspondente a uma casa num ficheiro.
+		 * 
+		 * @param filePath  Caminho do ficheiro
+		 * @param houseName Nome da casa
+		 * @return Linha correspondente à casa, ou null se não existir
+		 * @throws IOException
+		 */
 		private static String findHouseLine(String filePath, String houseName) throws IOException {
 			BufferedReader br = new BufferedReader(new FileReader(filePath));
 			String line;
@@ -423,12 +524,27 @@ public class SpertaServer {
 			return null;
 		}
 
+		/**
+		 * Verifica se o utilizador é o proprietário da casa.
+		 * 
+		 * @param line     Linha da casa
+		 * @param username Nome do utilizador
+		 * @return true se for proprietário, false caso contrário
+		 */
 		private static boolean isOwner(String line, String username) {
 			String[] parts = line.split(";");
 			String owner = parts[1].trim();
 			return owner.equals(username);
 		}
 
+		/**
+		 * Verifica se o utilizador tem permissão para aceder a uma divisão.
+		 * 
+		 * @param line     Linha da casa
+		 * @param username Nome do utilizador
+		 * @param place    Divisão
+		 * @return true se tiver permissão, false caso contrário
+		 */
 		private static boolean hasPermission(String line, String username, String place) {
 			if (isOwner(line, username)) {
 				return true;
@@ -465,8 +581,15 @@ public class SpertaServer {
 			return false;
 		}
 
+		/**
+		 * Verifica se um utilizador existe no ficheiro de utilizadores.
+		 * 
+		 * @param user Nome do utilizador
+		 * @return true se existir, false caso contrário
+		 * @throws FileNotFoundException
+		 */
 		private static boolean userExists(String user) throws FileNotFoundException {
-			File file = new File(FICHEIRO_USERS_LINUX);
+			File file = new File(FICHEIRO_USERS);
 
 			Scanner sc = new Scanner(file);
 			while (sc.hasNextLine()) {
@@ -481,6 +604,14 @@ public class SpertaServer {
 			return false;
 		}
 
+		/**
+		 * Adiciona uma permissão a um utilizador na string de permissões.
+		 * 
+		 * @param permissions String de permissões existente
+		 * @param user        Nome do utilizador
+		 * @param newPerm     Nova permissão a adicionar
+		 * @return String de permissões atualizada
+		 */
 		private static String addPermission(String permissions, String user, String newPerm) {
 			// Se não há permissões nenhumas ou tem all, é só meter a letra da nova
 			// permissao ou retirar o all e meter so a nova
@@ -538,14 +669,22 @@ public class SpertaServer {
 				updatedUsers.add(user + ":" + newPerm);
 			}
 
-			// Junta tudo de novo separadinho por vírgulas. Magia do Java 8!
+			// Junta tudo de novo separado por vírgulas.
 			return String.join(",", updatedUsers);
 		}
 
+		/**
+		 * Atualiza as permissões de um utilizador numa casa.
+		 * 
+		 * @param user           Nome do utilizador
+		 * @param houseName      Nome da casa
+		 * @param newPermissions Permissões a adicionar
+		 * @throws IOException
+		 */
 		public static void updatePermissions(String user, String houseName, String newPermissions)
 				throws IOException {
 
-			File inputFile = new File(FICHEIRO_CASAS_LINUX);
+			File inputFile = new File(FICHEIRO_CASAS);
 			File tempFile = new File("temp.txt");
 
 			BufferedReader reader = new BufferedReader(new FileReader(inputFile));
@@ -558,7 +697,7 @@ public class SpertaServer {
 				String[] parts = line.split(";", -1);
 
 				if (parts[0].equals(houseName)) {
-					// modify permissions
+					// modifica permissões
 					String permissions = parts[2];
 
 					permissions = addPermission(permissions, user, newPermissions);
@@ -579,6 +718,13 @@ public class SpertaServer {
 			tempFile.renameTo(inputFile);
 		}
 
+		/**
+		 * Calcula o próximo identificador de dispositivo para uma divisão.
+		 * 
+		 * @param devices String com dispositivos existentes
+		 * @param place   Divisão
+		 * @return Novo identificador de dispositivo
+		 */
 		private static String nextDevice(String devices, String place) {
 			String[] devs = devices.split(",");
 			int max = 0;
@@ -597,9 +743,16 @@ public class SpertaServer {
 			return place + (max + 1);
 		}
 
+		/**
+		 * Adiciona um novo dispositivo a uma casa e cria o respetivo log.
+		 * 
+		 * @param houseName Nome da casa
+		 * @param place     Divisão
+		 * @throws IOException
+		 */
 		private static void addDevice(String houseName, String place) throws IOException {
 
-			File input = new File(FICHEIRO_CASAS_LINUX);
+			File input = new File(FICHEIRO_CASAS);
 			File temp = new File("temp.txt");
 
 			BufferedReader reader = new BufferedReader(new FileReader(input));
@@ -642,10 +795,18 @@ public class SpertaServer {
 			temp.renameTo(input);
 		}
 
+		/**
+		 * Atualiza o tempo de um dispositivo numa casa.
+		 * 
+		 * @param houseName Nome da casa
+		 * @param place     Divisão/dispositivo
+		 * @param newTime   Novo valor de tempo
+		 * @throws IOException
+		 */
 		private static void updatePlaceTimeInHouse(String houseName, String place, int newTime)
 				throws IOException {
 
-			File inputFile = new File(FICHEIRO_ESTADOS_LINUX);
+			File inputFile = new File(FICHEIRO_ESTADOS);
 			File tempFile = new File("temp.txt");
 
 			BufferedReader reader = new BufferedReader(new FileReader(inputFile));
@@ -697,8 +858,15 @@ public class SpertaServer {
 			tempFile.renameTo(inputFile);
 		}
 
+		/**
+		 * Adiciona um dispositivo a uma casa com tempo inicial 0.
+		 * 
+		 * @param houseName Nome da casa
+		 * @param device    Nome do dispositivo
+		 * @throws IOException
+		 */
 		private static void addDeviceWithDefaultTime(String houseName, String device) throws IOException {
-			File input = new File(FICHEIRO_ESTADOS_LINUX);
+			File input = new File(FICHEIRO_ESTADOS);
 
 			if (!input.exists()) {
 				input.createNewFile();
@@ -747,6 +915,13 @@ public class SpertaServer {
 			temp.renameTo(input);
 		}
 
+		/**
+		 * Cria o ficheiro de log para um dispositivo.
+		 * 
+		 * @param houseName Nome da casa
+		 * @param device    Nome do dispositivo
+		 * @throws IOException
+		 */
 		private static void createDeviceLog(String houseName, String device) throws IOException {
 			File pastaLogs = new File(DIRETORIA_LOGS);
 			if (!pastaLogs.exists()) {
@@ -762,6 +937,14 @@ public class SpertaServer {
 			// }
 		}
 
+		/**
+		 * Adiciona uma entrada ao log de um dispositivo.
+		 * 
+		 * @param houseName Nome da casa
+		 * @param device    Nome do dispositivo
+		 * @param value     Valor a registar
+		 * @throws IOException
+		 */
 		private static void addLogEntry(String houseName, String device, int value) throws IOException {
 
 			String fileName = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
@@ -778,6 +961,14 @@ public class SpertaServer {
 			writer.close();
 		}
 
+		/**
+		 * Verifica se o utilizador existe na casa (como proprietário ou com
+		 * permissões).
+		 * 
+		 * @param line     Linha da casa
+		 * @param username Nome do utilizador
+		 * @return true se existir, false caso contrário
+		 */
 		private static boolean userExistInHouse(String line, String username) {
 			if (isOwner(line, username)) {
 				return true;
@@ -802,6 +993,13 @@ public class SpertaServer {
 			return false;
 		}
 
+		/**
+		 * Devolve a última linha de um ficheiro.
+		 * 
+		 * @param fileName Nome do ficheiro
+		 * @return Última linha, ou null se ficheiro não existir
+		 * @throws IOException
+		 */
 		private static String getLastLine(String fileName) throws IOException {
 			File f = new File(fileName);
 			if (!f.exists())
@@ -819,6 +1017,14 @@ public class SpertaServer {
 			return lastLine;
 		}
 
+		/**
+		 * Envia ao cliente os estados mais recentes dos dispositivos a que tem acesso.
+		 * 
+		 * @param line      Linha da casa
+		 * @param user      Nome do utilizador
+		 * @param outStream Stream de saída para o cliente
+		 * @throws IOException
+		 */
 		private static void sendRecentDeviceStatesFromLine(String line, String user, ObjectOutputStream outStream)
 				throws IOException {
 			Boolean isOwner = isOwner(line, user);
@@ -910,6 +1116,13 @@ public class SpertaServer {
 			}
 		}
 
+		/**
+		 * Verifica se um dispositivo existe numa casa.
+		 * 
+		 * @param houseLine Linha da casa
+		 * @param device    Nome do dispositivo
+		 * @return true se existir, false caso contrário
+		 */
 		private static boolean deviceExistsInHouse(String houseLine, String device) {
 
 			String[] parts = houseLine.split(";", -1);
@@ -924,6 +1137,14 @@ public class SpertaServer {
 			return false;
 		}
 
+		/**
+		 * Envia o ficheiro de log de um dispositivo ao cliente.
+		 * 
+		 * @param houseName Nome da casa
+		 * @param device    Nome do dispositivo
+		 * @param outStream Stream de saída para o cliente
+		 * @throws IOException
+		 */
 		private static void sendLog(String houseName, String device, ObjectOutputStream outStream) throws IOException {
 			outStream.writeObject("OK");
 			outStream.flush();

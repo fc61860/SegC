@@ -1,5 +1,18 @@
 Projeto SC
-teste
+
+|------------------------------------------- WINDOWS --------------------------------------|
+|------------------------------------------ COMPLIÇÃO -------------------------------------|
+|   Servidor:                                                                              |
+|       - javac SpertaServer/src/server/SpertaServer.java                                  |
+|   Cliente:                                                                               |
+|       - javac SpertaClient/src/client/SpertaClient.java                                  |
+|------------------------------------------ Execução --------------------------------------|
+|   Servidor:                                                                              |
+|       - java -cp SpertaServer/src/server SpertaServer                                    |
+|   Cliente:                                                                               |
+|       - java -cp . SpertaClient.src.client.SpertaClient <IP:Port> <userName> <password>  |
+|------------------------------------------------------------------------------------------|
+
 Problemas a resolver:
 1. A GRANDE FALHA: Atestação do Cliente (Último parágrafo)
 Lê com muita atenção o último parágrafo da página 6:

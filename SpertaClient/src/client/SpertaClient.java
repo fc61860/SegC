@@ -7,8 +7,13 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Scanner;
 
-//Cliente SpertaClient
-
+/**
+ * SpertaClient.
+ * Permite ao utilizador autenticar-se e interagir com o servidor SpertaServer,
+ * executando comandos para gerir casas inteligentes, dispositivos e permissões.
+ * Implementa a linha de comandos, atestação remota e transferência de
+ * ficheiros.
+ */
 public class SpertaClient {
 
     private static final String DIRETORIA_DATA = "SpertaClient/data/";
@@ -16,6 +21,13 @@ public class SpertaClient {
     public String user;
     public String pass;
 
+    /**
+     * Ponto de entrada do cliente Sperta.
+     * Lê argumentos de linha de comandos, processa o endereço do servidor e inicia
+     * a ligação.
+     * 
+     * @param args Argumentos: <serverAddress> <user-id> <password>
+     */
     public static void main(String[] args) {
         if (args.length != 3) {
             System.out.println("Erro!");
@@ -40,6 +52,15 @@ public class SpertaClient {
         client.startClient(ip, port, user, pass);
     }
 
+    /**
+     * Inicia a ligação ao servidor SpertaServer, realiza a atestação remota,
+     * autenticação do utilizador e executa o ciclo principal de comandos.
+     * 
+     * @param ip   Endereço IP do servidor
+     * @param port Porto TCP do servidor
+     * @param user Nome do utilizador
+     * @param pass Password do utilizador
+     */
     public void startClient(String ip, int port, String user, String pass) {
         Socket clientSocket = null;
 
@@ -192,6 +213,9 @@ public class SpertaClient {
 
     }
 
+    /**
+     * Mostra o menu de comandos disponíveis ao utilizador na linha de comandos.
+     */
     private void showMenu() {
         System.out.println("\n=========================================================================");
         System.out.println("                            MENU DE COMANDOS                             ");
@@ -206,6 +230,16 @@ public class SpertaClient {
         System.out.println("=========================================================================");
     }
 
+    /**
+     * Processa o comando introduzido pelo utilizador, valida argumentos e comunica
+     * com o servidor.
+     * 
+     * @param command   Comando principal (ex: CREATE, ADD, RD, EC, RT, RH)
+     * @param parts     Argumentos do comando
+     * @param input     Linha completa do comando
+     * @param outStream Stream de saída para o servidor
+     * @param inStream  Stream de entrada do servidor
+     */
     private void processCommand(String command, String[] parts, String input, ObjectOutputStream outStream,
             ObjectInputStream inStream) {
         switch (command) {
@@ -334,6 +368,13 @@ public class SpertaClient {
         }
     }
 
+    /**
+     * Processa a receção de ficheiros enviados pelo servidor (logs, resumos),
+     * guardando-os localmente e mostrando mensagens ao utilizador.
+     * 
+     * @param inStream          Stream de entrada do servidor
+     * @param nomeFicheiroLocal Nome do ficheiro local a guardar
+     */
     private void processFile(ObjectInputStream inStream, String nomeFicheiroLocal) {
         try {
             String status = (String) inStream.readObject();
