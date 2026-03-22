@@ -53,7 +53,7 @@ public class SpertaServer {
 	}
 
 	public void startServer(int port) {
-		// inicializarEstrutura(); isto estraga tudo e nao sei por que
+		inicializarEstrutura();
 		ServerSocket sSoc = null;
 
 		try {
@@ -79,29 +79,21 @@ public class SpertaServer {
 
 	private static void inicializarEstrutura() {
 		try {
-			// Create logs directory
+
+			File dataDir = new File("SpertaServer/data");
+			dataDir.mkdirs();
+
 			File logsDir = new File(DIRETORIA_LOGS);
-			if (!logsDir.exists()) {
-				logsDir.mkdirs();
-			}
+			logsDir.mkdirs();
 
-			// Create users file
 			File usersFile = new File(FICHEIRO_USERS_LINUX);
-			if (!usersFile.exists()) {
-				usersFile.createNewFile();
-			}
+			usersFile.createNewFile();
 
-			// Create casas file
 			File casasFile = new File(FICHEIRO_CASAS_LINUX);
-			if (!casasFile.exists()) {
-				casasFile.createNewFile();
-			}
+			casasFile.createNewFile();
 
-			// Create estados file
 			File estadosFile = new File(FICHEIRO_ESTADOS_LINUX);
-			if (!estadosFile.exists()) {
-				estadosFile.createNewFile();
-			}
+			estadosFile.createNewFile();
 
 		} catch (IOException e) {
 			System.err.println("Erro ao inicializar ficheiros: " + e.getMessage());
@@ -245,6 +237,8 @@ public class SpertaServer {
 					receberHistorico(user, outStream, parts);
 					break;
 				default:
+					// isto nao e suposto acontecer com um SpertaClient valido, mas assim o server
+					// proteje-se dos outros
 					outStream.writeObject("NOCOMMAND");
 			}
 		}
@@ -284,7 +278,10 @@ public class SpertaServer {
 				outStream.writeObject("NOK");
 				return;
 			}
-
+			if (user.equals(parts[1])) {
+				outStream.writeObject("NOK");
+				return;
+			}
 			String line = findHouseLine(FICHEIRO_CASAS_LINUX, parts[2]);
 			if (line == null) {
 				outStream.writeObject("NOHM");
@@ -294,7 +291,6 @@ public class SpertaServer {
 				outStream.writeObject("NOPERM");
 				// caso base
 			} else {
-				// esta funcao e bem grande e nao sei se funciona
 				updatePermissions(parts[1], parts[2], parts[3]);
 				outStream.writeObject("OK");
 			}
@@ -468,8 +464,9 @@ public class SpertaServer {
 		}
 
 		private static String addPermission(String permissions, String user, String newPerm) {
-			// 1. Se não há permissões nenhumas ainda, é só adicionar e devolver!
-			if (permissions == null || permissions.trim().isEmpty()) {
+			// Se não há permissões nenhumas ou tem all, é só meter a letra da nova
+			// permissao ou retirar o all e meter so a nova
+			if (permissions == null || permissions.trim().isEmpty() || permissions.equals("all")) {
 				return user + ":" + newPerm;
 			}
 
@@ -603,11 +600,8 @@ public class SpertaServer {
 					String newDevice = nextDevice(devices, place);
 					// isto ta aqui dentro, se falhar falham os tres mas sinceramente e para o
 					// melhor
-					System.out.println("Primeirp");
 					addDeviceWithDefaultTime(houseName, newDevice);
-					System.out.println("Seguyn");
 					createDeviceLog(houseName, newDevice);
-					System.out.println("Terce");
 					if (!devices.isEmpty()) {
 						devices = devices + ", " + newDevice;
 					} else {
@@ -855,7 +849,6 @@ public class SpertaServer {
 					}
 				}
 			}
-System.out.println(devices);
 			// Read last value of each device
 			boolean hasData = false;
 			File summary = new File(houseName + "_" + user + "_summary.txt");
@@ -864,7 +857,6 @@ System.out.println(devices);
 			for (String device : devices) {
 				String logFile = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
 				String lastLine = getLastLine(logFile);
-				System.out.println(lastLine);
 
 				if (lastLine != null && !lastLine.trim().isEmpty()) {
 					writer.write(device + ":" + lastLine);

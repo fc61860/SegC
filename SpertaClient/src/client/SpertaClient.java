@@ -109,9 +109,9 @@ public class SpertaClient {
                         continue;
 
                     String[] parts = input.split(" ");
-                    String command = parts[0].toUpperCase();
+                    //String command = parts[0].toUpperCase(); nao
 
-                    processCommand(command, parts, input, outStream, inStream);
+                    processCommand(parts[0], parts, input, outStream, inStream);
 
                 } catch (Exception e) { // Ctrl C
                     System.out.println("O cliente desligou-se (Ligação terminada).");

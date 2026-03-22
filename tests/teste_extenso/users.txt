@@ -1,0 +1,5 @@
+joao:bola
+maria:bola
+pedro:bola
+ana:bola
+miguel:bola
