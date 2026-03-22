@@ -90,7 +90,6 @@ public class SpertaClient {
                 clientSocket.close();
                 return;
             }
-            System.out.println("ATTESTATION OK");
             Scanner sc = new Scanner(System.in); // Este scanner não se fecha para evitar conflitos com o teclado.
 
             String currentUser = user;
@@ -119,11 +118,10 @@ public class SpertaClient {
                     break;
                 }
 
+                System.out.println(respostaAuth);
                 if (respostaAuth.equals("OK-NEW-USER") || respostaAuth.equals("OK-USER")
                         || respostaAuth.equals("ATTESTATION OK")) {
                     sucesso = true;
-                } else {
-                    System.out.println("Resposta do Servidor: " + respostaAuth);
                 }
 
                 firstTry = false;
