@@ -30,6 +30,7 @@ public class SpertaServer {
 	private static final String FICHEIRO_USERS_LINUX = "SpertaServer/data/users.txt";
 	private static final String FICHEIRO_CASAS_LINUX = "SpertaServer/data/casas.txt";
 	private static final String FICHEIRO_ESTADOS_LINUX = "SpertaServer/data/estados.txt";
+	private static final String FICHEIRO_CLIENTSIZE_LINUX = "SpertaServer/data/client_size.txt";
 
 	private static final String DIRETORIA_LOGS = "SpertaServer/data/logs/";
 
@@ -115,7 +116,24 @@ public class SpertaServer {
 			try {
 				ObjectOutputStream outStream = new ObjectOutputStream(socket.getOutputStream());
 				ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream());
+				long clientSize = inStream.readLong();
+				BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CLIENTSIZE_LINUX));
 
+				String line = reader.readLine(); // "SpertaClient:4096"
+				String[] parts = line.split(":");
+
+				long expectedSize = Long.parseLong(parts[1]);
+
+				reader.close();
+				if (clientSize != expectedSize) {
+					outStream.writeObject("NOK");
+					outStream.close();
+					inStream.close();
+					socket.close();
+					return;
+				}
+
+				outStream.writeObject("OK");
 				String user = null;
 				boolean validClient = false;
 				try {

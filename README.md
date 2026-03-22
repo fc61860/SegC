@@ -13,4 +13,4 @@ O Problema: O teu cliente não envia o tamanho do seu próprio ficheiro executá
 5. Ao fazer RT de uma casa sem dispositivos o server cria um ficheiro vazio e quando adicionas um dispositivo e fazes novamente RT ele
 volta a escrever esse ficheiro e coloca-o na pasta certa
 (Opcional)
-4. Corrigir a ordem de adição de dispositivos a uma casa, se possivel. EX: Ao adicionar M1 depois G1 e depois M2 o ficheiro estados.txt guarda M1, G1, M2 e ficaria melhor se guardasse M1, M2, G1
+4. Corrigir a ordem de adição de dispositivos a uma casa, se possivel. EX: Ao adicionar M1 depois G1 e depois M2 o ficheiro estados.txt guarda M1, G1, M2 e ficaria melhor se guardasse M1, M2, G1 NAO

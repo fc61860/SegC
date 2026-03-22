@@ -12,6 +12,7 @@ import java.util.Scanner;
 public class SpertaClient {
 
     private static final String DIRETORIA_DATA = "SpertaClient/data/";
+    private static final String FICHEIRO_JAR = "SpertaClient/bin/SpertaClient.jar";
     public String user;
     public String pass;
 
@@ -49,7 +50,26 @@ public class SpertaClient {
             ObjectOutputStream outStream = new ObjectOutputStream(clientSocket.getOutputStream());
             ObjectInputStream inStream = new ObjectInputStream(clientSocket.getInputStream());
             Boolean sucesso = false;
+            // File clientFile = new File(FICHEIRO_JAR);
+            // long size = clientFile.length();
+            File clientFile = new File(
+                    SpertaClient.class.getProtectionDomain()
+                            .getCodeSource()
+                            .getLocation()
+                            .toURI());
 
+            long size = clientFile.length();
+            outStream.writeLong(size);
+            outStream.flush();
+            String answer = (String) inStream.readObject();
+            if (answer.equals("NOK")) {
+                System.out.println("ATTESTATION FAILED");
+                outStream.close();
+                inStream.close();
+                clientSocket.close();
+                return;
+            }
+            System.out.println("ATTESTATION OK");
             Scanner sc = new Scanner(System.in); // Este scanner não se fecha para evitar conflitos com o teclado.
 
             String currentUser = user;
@@ -109,7 +129,7 @@ public class SpertaClient {
                         continue;
 
                     String[] parts = input.split(" ");
-                    //String command = parts[0].toUpperCase(); nao
+                    // String command = parts[0].toUpperCase(); nao
 
                     processCommand(parts[0], parts, input, outStream, inStream);
 
