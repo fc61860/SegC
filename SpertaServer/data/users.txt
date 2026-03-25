@@ -1,7 +1,0 @@
-alan:pass
-iberia:pass
-rafael:1234
-Gui:1234
-Jorge:1234
-Otávio:1234
-Pedro:1234
