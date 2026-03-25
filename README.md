@@ -1,29 +1,27 @@
 Projeto Segurança e Confiabilidade
 
-|------------------------------------------- WINDOWS --------------------------------------|
-|------------------------------------------ COMPLIÇÃO -------------------------------------|
-|   Servidor:                                                                              |
-|       - javac SpertaServer/src/server/SpertaServer.java                                  |
-|   Cliente:                                                                               |
-|       - javac SpertaClient/src/client/SpertaClient.java                                  |
-|------------------------------------------ Execução --------------------------------------|
-|   Servidor:                                                                              |
-|       - java -cp SpertaServer/src/server SpertaServer                                    |
-|   Cliente:                                                                               |
-|       - java -cp . SpertaClient.src.client.SpertaClient <IP:Port> <userName> <password>  |
-|------------------------------------------------------------------------------------------|
+|----------------------------------- WINDOWS-------------------------------||-------------------------------------------- UBUNTU --------------------------------------|
+|   Apartir do diretório raiz                                              ||   Diretório raiz, dar permissao aos scripts na primeira vez: chmod +x scripts/*.sh       |
+|---------------------------------- COMPILAÇÃO ----------------------------||------------------------------------------ COMPILAÇÃO ------------------------------------|
+|   Servidor:                                                              ||   Servidor:                                                                              |
+|       - .\scripts\compile-server.ps1                                     ||       - ./scripts/compile-server.sh                                                      |
+|   Cliente:                                                               ||   Cliente:                                                                               |
+|       - .\scripts\compile-client.ps1                                     ||       - ./scripts/compile-client.sh                                                      |
+|----------------------------------- EXECUÇÃO -----------------------------||------------------------------------------ EXECUÇÃO --------------------------------------|
+|   Servidor:                                                              ||   Servidor:                                                                              |
+|       - .\scripts\run-server.ps1                                         ||       - ./scripts/run-server.sh                                                          |
+|   Cliente:                                                               ||   Cliente:                                                                               |
+|       - .\scripts\run-client.ps1 <IP:Port> <userName> <password>         ||       - ./scripts/run-client.sh <IP:Port> <userName> <password>                          |
+|----------------------------------- LIMPEZA ------------------------------||------------------------------------------- LIMPEZA --------------------------------------|
+|   Windows PowerShell:                                                    ||   Ubuntu Bash:                                                                           |
+|       - .\scripts\clean.ps1                                              ||       - ./scripts/clean.sh                                                               |
+|--------------------------------------------------------------------------||------------------------------------------------------------------------------------------|
 
-Problemas a resolver:
-1. A GRANDE FALHA: Atestação do Cliente (Último parágrafo)
-Lê com muita atenção o último parágrafo da página 6:
+Testes Passados
+- Autenticação
+- Operação CREATE
+- Operação RD
+- Operação EC
+- Operação ADD
 
-"O servidor deve atestar a aplicação cliente... Para tal, o servidor recebe o tamanho desta (vindo da própria aplicação cliente) e o valida com a informação que possui localmente sobre a aplicação."
-
-O Problema: O teu cliente não envia o tamanho do seu próprio ficheiro executável, e o teu servidor não verifica nada disso. Isto é uma funcionalidade base de Segurança para evitar que um "hacker" crie um cliente falso para comunicar com o servidor.
-2. Verificar os outputs de RT e RH e a sua respota no caso de correr tudo bem ou de não haver dados a guardar.
-3. Todos os comandos estão funcionais e têm o output esperado
-4. Corrigir o output nos .csv
-5. Ao fazer RT de uma casa sem dispositivos o server cria um ficheiro vazio e quando adicionas um dispositivo e fazes novamente RT ele
-volta a escrever esse ficheiro e coloca-o na pasta certa
-(Opcional)
-4. Corrigir a ordem de adição de dispositivos a uma casa, se possivel. EX: Ao adicionar M1 depois G1 e depois M2 o ficheiro estados.txt guarda M1, G1, M2 e ficaria melhor se guardasse M1, M2, G1 NAO
+Tenho de dividir o código da parte do cliente

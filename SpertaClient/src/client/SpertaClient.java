@@ -127,7 +127,7 @@ public class SpertaClient {
                     break;
                 }
 
-                // System.out.println(respostaAuth);
+                System.out.println(respostaAuth);
                 if (respostaAuth.equals("OK-NEW-USER") || respostaAuth.equals("OK-USER")
                         || respostaAuth.equals("ATTESTATION OK")) {
                     sucesso = true;
