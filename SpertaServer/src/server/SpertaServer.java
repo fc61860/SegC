@@ -9,8 +9,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -30,6 +32,7 @@ public class SpertaServer {
 	private static final String FICHEIRO_CASAS = "SpertaServer/data/casas.txt";
 	private static final String FICHEIRO_ESTADOS = "SpertaServer/data/estados.txt";
 	private static final String FICHEIRO_CLIENTSIZE = "SpertaServer/data/client_size.txt";
+	private static final String FICHEIRO_CLIENTS_ONLINE_LINUX = "SpertaServer/data/online_users.txt";
 
 	private static final String DIRETORIA_LOGS = "SpertaServer/data/logs/";
 
@@ -109,6 +112,11 @@ public class SpertaServer {
 			File estadosFile = new File(FICHEIRO_ESTADOS);
 			estadosFile.createNewFile();
 
+			File usersOnlineFile = new File(FICHEIRO_CLIENTS_ONLINE_LINUX);
+			//limpar ficheiro se ja existir
+			PrintWriter writer = new PrintWriter(usersOnlineFile);
+			writer.close();
+
 		} catch (IOException e) {
 			System.err.println("Erro ao inicializar ficheiros: " + e.getMessage());
 			e.printStackTrace();
@@ -157,6 +165,14 @@ public class SpertaServer {
 				boolean validClient = false;
 				try {
 					user = (String) inStream.readObject();
+					if (!loginUser(user)) {
+						outStream.writeObject("USERON");
+						outStream.close();
+						inStream.close();
+						socket.close();
+						return;
+					}
+					outStream.writeObject("OK");
 					validClient = autenticarCliente(user, inStream, outStream);
 
 				} catch (ClassNotFoundException e1) {
@@ -166,7 +182,6 @@ public class SpertaServer {
 					try {
 						while (true) {
 							processCommand(user, inStream, outStream);
-
 						}
 						// Ctrl-C
 					} catch (EOFException e) {
@@ -176,6 +191,7 @@ public class SpertaServer {
 					} catch (ClassNotFoundException e) {
 						e.printStackTrace();
 					} finally {
+						logoutUser(user);
 						socket.close();
 					}
 				}
@@ -613,9 +629,8 @@ public class SpertaServer {
 		 * @return String de permissões atualizada
 		 */
 		private static String addPermission(String permissions, String user, String newPerm) {
-			// Se não há permissões nenhumas ou tem all, é só meter a letra da nova
-			// permissao ou retirar o all e meter so a nova
-			if (permissions == null || permissions.trim().isEmpty() || permissions.equals("all")) {
+			// Se nao ha permissoes nenhumas, e so meter a letra da nova permissao
+			if (permissions == null || permissions.trim().isEmpty()) {
 				return user + ":" + newPerm;
 			}
 
@@ -628,11 +643,6 @@ public class SpertaServer {
 					continue; // Ignora lixo ou espaços em branco
 
 				String[] parts = u.split(":");
-				// Se a estrutura estiver mal formada, guarda como está e avança
-				if (parts.length != 2) {
-					updatedUsers.add(u.trim());
-					continue;
-				}
 
 				String currentUser = parts[0].trim();
 				String currentPerms = parts[1].trim();
@@ -640,9 +650,10 @@ public class SpertaServer {
 				if (currentUser.equals(user)) {
 					userFound = true; // Encontrámos o utilizador!
 
-					// Se ele já for "all" ou se lhe formos dar "all", fica "all"
-					if (currentPerms.equals("all") || newPerm.equals("all")) {
+					if (newPerm.equals("all")) {
 						updatedUsers.add(user + ":all");
+					} else if (currentPerms.equals("all")) {
+						updatedUsers.add(user + ":" + newPerm);
 					} else {
 						// Verifica se a nova permissão já lá está
 						String[] perms = currentPerms.split("\\|");
@@ -1165,6 +1176,34 @@ public class SpertaServer {
 
 			outStream.flush();
 			fileIn.close();
+		}
+
+		private static synchronized boolean isUserOnline(String username) throws IOException {
+			File file = new File(FICHEIRO_CLIENTS_ONLINE_LINUX);
+
+			List<String> users = Files.readAllLines(file.toPath());
+			return users.contains(username);
+		}
+
+		private static synchronized boolean loginUser(String username) throws IOException {
+			if (isUserOnline(username)) {
+				return false; // user already logged in
+			}
+
+			try (BufferedWriter writer = new BufferedWriter(new FileWriter(FICHEIRO_CLIENTS_ONLINE_LINUX, true))) {
+				writer.write(username);
+				writer.newLine();
+			}
+			return true;
+		}
+
+		private static synchronized void logoutUser(String username) throws IOException {
+			File file = new File(FICHEIRO_CLIENTS_ONLINE_LINUX);
+
+			List<String> users = Files.readAllLines(file.toPath());
+			users.remove(username);
+
+			Files.write(file.toPath(), users);
 		}
 
 	}

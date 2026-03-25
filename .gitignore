@@ -1,5 +1,6 @@
 *.txt
 *.csv
 
-!tests/*.txt
-!tests/*.csv
+!tests/**/*.txt
+!tests/**/*.csv
+!SpertaServer/data/client_size.txt

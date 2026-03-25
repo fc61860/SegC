@@ -66,7 +66,7 @@ public class SpertaClient {
 
         try {
             clientSocket = new Socket(ip, port);
-            System.out.println("Socket iniciada!");
+            // System.out.println("Socket iniciada!");
 
             ObjectOutputStream outStream = new ObjectOutputStream(clientSocket.getOutputStream());
             ObjectInputStream inStream = new ObjectInputStream(clientSocket.getInputStream());
@@ -90,20 +90,29 @@ public class SpertaClient {
                 clientSocket.close();
                 return;
             }
+
+            System.out.println("ATTESTATION OK");
+            outStream.writeObject(user);
+            outStream.flush();
+            String userOn = (String) inStream.readObject();
+
+            if (userOn.equals("USERON")) {
+                System.out.println("USER ALREADY ONLINE");
+                outStream.close();
+                inStream.close();
+                clientSocket.close();
+                return;
+            }
             Scanner sc = new Scanner(System.in); // Este scanner não se fecha para evitar conflitos com o teclado.
 
-            String currentUser = user;
             String currentPass = pass;
             Boolean firstTry = true;
             int trys = 1;
 
-            outStream.writeObject(currentUser);
-            outStream.flush();
-
             while (!sucesso && trys <= 3) {
                 if (!firstTry) {
                     System.out.println("Tentativa " + trys + "/3:");
-                    System.out.print("Password incorreta! Digite nova password para o user '" + currentUser + "': ");
+                    System.out.print("Password incorreta! Digite nova password para o user '" + user + "': ");
                     currentPass = sc.nextLine();
                 }
 
@@ -118,7 +127,7 @@ public class SpertaClient {
                     break;
                 }
 
-                System.out.println(respostaAuth);
+                // System.out.println(respostaAuth);
                 if (respostaAuth.equals("OK-NEW-USER") || respostaAuth.equals("OK-USER")
                         || respostaAuth.equals("ATTESTATION OK")) {
                     sucesso = true;
@@ -148,7 +157,6 @@ public class SpertaClient {
                         continue;
 
                     String[] parts = input.split(" ");
-                    // String command = parts[0].toUpperCase(); nao
 
                     processCommand(parts[0], parts, input, outStream, inStream);
 
@@ -157,49 +165,6 @@ public class SpertaClient {
                     break;
                 }
             }
-
-            // File fileSend = new File("SpertaServer/data/teste.txt");
-            // if(fileSend.exists()) {
-            // outStream.writeObject(fileSend.getName());
-            // outStream.writeObject(fileSend.length());
-
-            // FileInputStream fileIn = new FileInputStream(fileSend);
-            // byte[] buffer = new byte[1024];
-            // int bytesRead;
-
-            // while ((bytesRead = fileIn.read(buffer)) != -1) {
-            // outStream.write(buffer, 0, bytesRead);
-            // }
-
-            // outStream.flush(); // Garante que o último bocado de bytes é empurrado pelo
-            // tubo
-            // fileIn.close();
-            // System.out.println("Ficheiro enviado com sucesso!");
-            // } else {
-            // System.out.println("O ficheiro não existe!");
-            // }
-
-            // try {
-            // String fileName = (String) inStream.readObject();
-            // long fileSize = (Long) inStream.readObject();
-            // FileOutputStream fileOut = new FileOutputStream("returned_" + fileName);
-            // byte[] buffer = new byte[1024];
-            // int bytesRead;
-            // long totalLido = 0;
-
-            // while (totalLido < fileSize && (bytesRead = inStream.read(buffer, 0,
-            // (int)Math.min(buffer.length, fileSize - totalLido))) != -1) {
-            // fileOut.write(buffer, 0, bytesRead);
-            // totalLido += bytesRead;
-            // }
-
-            // fileOut.close();
-            // } catch (Exception e) {
-            // e.printStackTrace();
-            // }
-            // System.out.println("À espera da proxima ordem...");
-            // Scanner waitScanner = new Scanner(System.in);
-            // waitScanner.nextLine();
 
             outStream.close();
             inStream.close();
