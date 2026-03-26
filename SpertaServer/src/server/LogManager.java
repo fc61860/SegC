@@ -120,7 +120,7 @@ public class LogManager {
     private void sendRecentDeviceStatesFromLine(HouseManager houseManager, String line, String user,
             ObjectOutputStream outStream) throws IOException {
         boolean owner = houseManager.isOwner(line, user);
-        String[] parts = line.split(";", -1);
+        String[] parts = houseManager.splitHouseLine(line);
         String houseName = parts[0].trim();
         String permissions = parts[2].trim();
         String devicesStr = parts[3].trim();

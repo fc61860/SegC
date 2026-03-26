@@ -12,16 +12,10 @@ Projeto Segurança e Confiabilidade
 |       - .\scripts\run-server.ps1                                         ||       - ./scripts/run-server.sh                                                          |
 |   Cliente:                                                               ||   Cliente:                                                                               |
 |       - .\scripts\run-client.ps1 <IP:Port> <userName> <password>         ||       - ./scripts/run-client.sh <IP:Port> <userName> <password>                          |
-|----------------------------------- LIMPEZA ------------------------------||------------------------------------------- LIMPEZA --------------------------------------|
+|------------------------------ LIMPEZA (.class) --------------------------||------------------------------------- LIMPEZA (.class) -----------------------------------|
 |   Windows PowerShell:                                                    ||   Ubuntu Bash:                                                                           |
 |       - .\scripts\clean.ps1                                              ||       - ./scripts/clean.sh                                                               |
+|---------------------------------- RESET-DATA ----------------------------||----------------------------------------- RESET-DATA -------------------------------------|
+|   Windows PowerShell:                                                    ||   Ubuntu Bash:                                                                           |
+|       - .\scripts\reset-data.ps1                                         ||       - ./scripts/reset-data.sh                                                          |
 |--------------------------------------------------------------------------||------------------------------------------------------------------------------------------|
-
-Testes Passados
-- Autenticação
-- Operação CREATE
-- Operação RD
-- Operação EC
-- Operação ADD
-
-Tenho de dividir o código da parte do cliente

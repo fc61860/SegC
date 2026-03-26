@@ -68,7 +68,7 @@ public class PermissionsManager {
             return true;
         }
 
-        String[] parts = line.split(";", -1);
+        String[] parts = houseManager.splitHouseLine(line);
         String permissions = parts[2].trim();
         for (String userPerm : permissions.split(",")) {
             if (userPerm.trim().isEmpty()) {
@@ -168,7 +168,7 @@ public class PermissionsManager {
                 BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(";", -1);
+                String[] parts = houseManager.splitHouseLine(line);
                 if (parts[0].equals(houseName)) {
                     parts[2] = addPermission(parts[2], user, newPermissions);
                     line = String.join(";", parts);

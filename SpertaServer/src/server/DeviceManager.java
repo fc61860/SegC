@@ -95,7 +95,7 @@ public class DeviceManager {
      * @return true se o dispositivo existir nessa casa; false caso contrario
      */
     public boolean deviceExistsInHouse(String houseLine, String device) {
-        String[] parts = houseLine.split(";", -1);
+        String[] parts = new HouseManager().splitHouseLine(houseLine);
         String devicesStr = parts[3].trim();
         if (devicesStr.isEmpty()) {
             return false;
@@ -152,7 +152,7 @@ public class DeviceManager {
                 BufferedWriter writer = new BufferedWriter(new FileWriter(temp))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(";", -1);
+                String[] parts = houseManager.splitHouseLine(line);
                 if (parts[0].equals(houseName)) {
                     String devices = parts[3].trim();
                     String newDevice = nextDevice(devices, place);

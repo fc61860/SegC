@@ -47,7 +47,7 @@ public class HouseManager {
         try (BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CASAS))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(";");
+                String[] parts = splitHouseLine(line);
                 if (parts[0].equals(houseName)) {
                     return line;
                 }
@@ -65,7 +65,7 @@ public class HouseManager {
      * @return true se o utilizador for o proprietario; false caso contrario
      */
     public boolean isOwner(String line, String username) {
-        String[] parts = line.split(";");
+        String[] parts = splitHouseLine(line);
         return parts[1].trim().equals(username);
     }
 
@@ -82,7 +82,7 @@ public class HouseManager {
             return true;
         }
 
-        String[] parts = line.split(";", -1);
+        String[] parts = splitHouseLine(line);
         for (String userPerm : parts[2].trim().split(",")) {
             if (userPerm.trim().isEmpty()) {
                 continue;
@@ -104,5 +104,24 @@ public class HouseManager {
      */
     public File getCasasFile() {
         return new File(FICHEIRO_CASAS);
+    }
+
+    /**
+     * Divide uma linha de casa garantindo sempre os campos esperados para nome,
+     * dono, permissoes e dispositivos, mesmo quando existem registos antigos com
+     * menos separadores.
+     *
+     * @param line linha persistida da casa
+     * @return array normalizado com quatro posicoes
+     */
+    String[] splitHouseLine(String line) {
+        String[] rawParts = line.split(";", -1);
+        String[] normalizedParts = new String[] { "", "", "", "" };
+
+        for (int i = 0; i < rawParts.length && i < normalizedParts.length; i++) {
+            normalizedParts[i] = rawParts[i];
+        }
+
+        return normalizedParts;
     }
 }
