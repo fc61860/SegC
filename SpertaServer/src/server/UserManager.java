@@ -38,7 +38,8 @@ public class UserManager {
             throws IOException, ClassNotFoundException {
         int tentativas = 0;
         String passwd;
-        File file = ensureUsersFileExists();
+        // File file = ensureUsersFileExists();
+        File file = new File(FICHEIRO_USERS);
         String correctPassword = findUserPassword(file, user);
 
         if (correctPassword == null) {
@@ -169,13 +170,13 @@ public class UserManager {
      * @throws IOException se nao for possivel criar o ficheiro quando este ainda
      *                     nao existe
      */
-    private File ensureUsersFileExists() throws IOException {
-        File file = new File(FICHEIRO_USERS);
-        if (!file.exists()) {
-            file.createNewFile();
-        }
-        return file;
-    }
+    // private File ensureUsersFileExists() throws IOException {
+    // File file = new File(FICHEIRO_USERS);
+    // if (!file.exists()) {
+    // file.createNewFile();
+    // }
+    // return file;
+    // }
 
     /**
      * Procura a password atualmente associada a um utilizador no ficheiro

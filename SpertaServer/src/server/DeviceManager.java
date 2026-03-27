@@ -227,9 +227,9 @@ public class DeviceManager {
      */
     private void addDeviceWithDefaultTime(String houseName, String device) throws IOException {
         File input = new File(FICHEIRO_ESTADOS);
-        if (!input.exists()) {
-            input.createNewFile();
-        }
+        // if (!input.exists()) {
+        //     input.createNewFile();
+        // }
 
         File temp = File.createTempFile("times_", ".tmp", input.getParentFile());
         boolean houseFound = false;
@@ -267,10 +267,10 @@ public class DeviceManager {
      * @throws IOException se o ficheiro de log nao puder ser criado
      */
     private void createDeviceLog(String houseName, String device) throws IOException {
-        File pastaLogs = new File(DIRETORIA_LOGS);
-        if (!pastaLogs.exists()) {
-            pastaLogs.mkdirs();
-        }
+        // File pastaLogs = new File(DIRETORIA_LOGS);
+        // if (!pastaLogs.exists()) {
+        //     pastaLogs.mkdirs();
+        // }
 
         File logFile = new File(DIRETORIA_LOGS + houseName + "_" + device + ".csv");
         logFile.createNewFile();
