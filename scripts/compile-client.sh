@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-output_dir="SpertaClient/bin"
-mkdir -p "$output_dir"
+classes_dir="SpertaClient/bin/classes"
+jar_path="SpertaClient/bin/SpertaClient.jar"
+mkdir -p "$classes_dir"
 
 mapfile -t sources < <(find "SpertaClient/src/client" -maxdepth 1 -name '*.java' | sort)
 
@@ -11,4 +12,10 @@ if [ "${#sources[@]}" -eq 0 ]; then
 	exit 1
 fi
 
-javac -d "$output_dir" "${sources[@]}"
+javac -d "$classes_dir" "${sources[@]}"
+rm -f "$jar_path"
+
+(
+	cd "$classes_dir"
+	jar --create --file "../SpertaClient.jar" --main-class SpertaClient.src.client.SpertaClient .
+)

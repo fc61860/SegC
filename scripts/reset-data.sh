@@ -4,9 +4,8 @@ set -euo pipefail
 data_dir="SpertaServer/data"
 logs_dir="$data_dir/logs"
 client_data_dir="SpertaClient/data"
-summaries_dir="summaries"
 
-mkdir -p "$data_dir" "$logs_dir" "$client_data_dir" "$summaries_dir"
+mkdir -p "$data_dir" "$logs_dir" "$client_data_dir"
 
 : > "$data_dir/users.txt"
 : > "$data_dir/casas.txt"
@@ -15,5 +14,4 @@ mkdir -p "$data_dir" "$logs_dir" "$client_data_dir" "$summaries_dir"
 
 find "$logs_dir" -maxdepth 1 -type f -delete
 find "$client_data_dir" -maxdepth 1 -type f -delete
-find "$summaries_dir" -maxdepth 1 -type f -delete
 find "$data_dir" -maxdepth 1 -name '*.tmp' -type f -delete

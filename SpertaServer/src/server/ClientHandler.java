@@ -113,25 +113,37 @@ public class ClientHandler extends Thread {
      *                     resposta
      */
     private boolean validateClient(ObjectInputStream inStream, ObjectOutputStream outStream) throws IOException {
-        long clientSize = inStream.readLong();
+        try {
+            String clientName = (String) inStream.readObject();
+            long clientSize = inStream.readLong();
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CLIENTSIZE))) {
-            String line = reader.readLine();
-            if (line == null || !line.contains(":")) {
-                sendResponse(outStream, "NOK");
-                return false;
+            try (BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CLIENTSIZE))) {
+                String line = reader.readLine();
+                if (line == null || !line.contains(":")) {
+                    sendResponse(outStream, "NOK");
+                    return false;
+                }
+
+                String[] parts = line.split(":", 2);
+                if (parts.length != 2) {
+                    sendResponse(outStream, "NOK");
+                    return false;
+                }
+
+                String expectedName = parts[0];
+                long expectedSize = Long.parseLong(parts[1]);
+                if (!expectedName.equals(clientName) || clientSize != expectedSize) {
+                    sendResponse(outStream, "NOK");
+                    return false;
+                }
             }
 
-            String[] parts = line.split(":");
-            long expectedSize = Long.parseLong(parts[1]);
-            if (clientSize != expectedSize) {
-                sendResponse(outStream, "NOK");
-                return false;
-            }
+            sendResponse(outStream, "OK");
+            return true;
+        } catch (ClassNotFoundException | NumberFormatException e) {
+            sendResponse(outStream, "NOK");
+            return false;
         }
-
-        sendResponse(outStream, "OK");
-        return true;
     }
 
     /**

@@ -13,3 +13,7 @@ if (Test-Path 'SpertaClient/bin') {
 foreach ($file in $classFiles) {
     Remove-Item $file.FullName -Force
 }
+
+if (Test-Path 'SpertaClient/bin/SpertaClient.jar') {
+    Remove-Item 'SpertaClient/bin/SpertaClient.jar' -Force
+}

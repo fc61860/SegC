@@ -11,6 +11,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-& java -cp 'SpertaClient/bin' 'SpertaClient.src.client.SpertaClient' $ServerAddress $UserName $Password
+& java -jar 'SpertaClient/bin/SpertaClient.jar' $ServerAddress $UserName $Password
 
 exit $LASTEXITCODE

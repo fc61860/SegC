@@ -6,4 +6,4 @@ if [ "$#" -ne 3 ]; then
     exit 1
 fi
 
-java -cp "SpertaClient/bin" SpertaClient.src.client.SpertaClient "$1" "$2" "$3"
+java -jar "SpertaClient/bin/SpertaClient.jar" "$1" "$2" "$3"

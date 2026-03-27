@@ -7,6 +7,7 @@ Projeto Segurança e Confiabilidade
 |       - .\scripts\compile-server.ps1                                     ||       - ./scripts/compile-server.sh                                                  |
 |   Cliente:                                                               ||   Cliente:                                                                           |
 |       - .\scripts\compile-client.ps1                                     ||       - ./scripts/compile-client.sh                                                  |
+|       - .\scripts\update-client-attestation.ps1                          ||       - ./scripts/update-client-attestation.sh                                       |
 |----------------------------------- EXECUÇÃO -----------------------------||------------------------------------------ EXECUÇÃO ----------------------------------|
 |   Servidor:                                                              ||   Servidor:                                                                          |
 |       - .\scripts\run-server.ps1                                         ||       - ./scripts/run-server.sh                                                      |
@@ -20,12 +21,15 @@ Projeto Segurança e Confiabilidade
 |       - .\scripts\reset-data.ps1                                         ||       - ./scripts/reset-data.sh                                                      |
 |--------------------------------------------------------------------------||--------------------------------------------------------------------------------------|
 
+O script compile-client apenas compila o cliente e gera o ficheiro SpertaClient\bin\SpertaClient.jar
+O script update-client-attestation atualiza o ficheiro SpertaServer\data\client_size.txt com o nome e o tamanho do SpertaClient.jar
+
 As classes .java relativas ao servidor estão na pasta SpertaServer\src\server e relativas ao cliente na pasta SpertaClient\src\client
 
-Os ficheiros users.txt, online_users.txt, casas.txt, estados.txt e client_size.txt são guardados na pasta SpertaServer\data
+Os ficheiros .class do cliente são gerados na pasta SpertaClient\bin\classes e o ficheiro SpertaClient.jar é gerado na pasta SpertaClient\bin
 
+Os ficheiros users.txt, online_users.txt, casas.txt, estados.txt e client_size.txt são guardados na pasta SpertaServer\data
 E os ficheiros .csv são guardados na pasta SpertaServer\data\logs
 
 O ficheiro client_summary_<nomedacasa>.txt criado com o comando RT <nomedacasa> é guardado na pasta SpertaClient\data
 tal como o ficheiro client_log_<nomedacasa>.csv criado com o comando RH <nomedacasa>
-

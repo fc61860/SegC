@@ -57,6 +57,8 @@ public class AuthHandler {
         File clientFile = new File(codeSourceClass.getProtectionDomain().getCodeSource().getLocation().toURI());
         long size = clientFile.length();
 
+        outStream.writeObject(clientFile.getName());
+        outStream.flush();
         outStream.writeLong(size);
         outStream.flush();
 
