@@ -16,6 +16,7 @@ public class UserManager {
     private static final int MAX_TENTATIVAS = 3;
     private static final String FICHEIRO_USERS = "SpertaServer/data/users.txt";
     private static final String FICHEIRO_CLIENTS_ONLINE = "SpertaServer/data/online_users.txt";
+    private final Object userFileLock = new Object();
 
     /**
      * Autentica um utilizador existente ou regista um novo utilizador quando o
@@ -24,54 +25,31 @@ public class UserManager {
      * @param user      username enviado pelo cliente
      * @param inStream  stream de entrada da ligacao com o cliente
      * @param outStream stream de saida da ligacao com o cliente
-     * @return true quando a autenticacao termina com sucesso; false quando o
-     *         cliente excede o numero maximo de tentativas
+     * @return "OK-NEW-USER" quando o utilizador e criado, "OK-USER" quando a
+     *         autenticacao de um utilizador existente termina com sucesso, ou
+     *         null quando o cliente excede o numero maximo de tentativas
      * @throws IOException            se ocorrer um erro de I/O ao ler ou escrever
      *                                nos
      *                                streams ou ficheiros
      * @throws ClassNotFoundException se o objeto recebido do stream nao for
      *                                reconhecido
      */
-    public boolean autenticarCliente(String user, ObjectInputStream inStream, ObjectOutputStream outStream)
+    public String autenticarCliente(String user, ObjectInputStream inStream, ObjectOutputStream outStream)
             throws IOException, ClassNotFoundException {
         int tentativas = 0;
         String passwd;
+        File file = ensureUsersFileExists();
+        String correctPassword = findUserPassword(file, user);
 
-        File file = new File(FICHEIRO_USERS);
-        if (!file.exists()) {
-            file.createNewFile();
-        }
-
-        String correctPassword = null;
-        boolean exists = false;
-        try (Scanner sc = new Scanner(file)) {
-            while (sc.hasNextLine()) {
-                String line = sc.nextLine();
-                String[] parts = line.split(":");
-                if (parts[0].equals(user)) {
-                    exists = true;
-                    correctPassword = parts[1];
-                    break;
-                }
-            }
-        }
-
-        if (!exists) {
+        if (correctPassword == null) {
             passwd = (String) inStream.readObject();
-            try (FileWriter fw = new FileWriter(file, true)) {
-                fw.write(user + ":" + passwd + "\n");
+            correctPassword = registerUserIfAbsent(file, user, passwd);
+            if (correctPassword == null) {
+                return "OK-NEW-USER";
             }
-            outStream.writeObject("OK-NEW-USER");
-            outStream.flush();
-            return true;
-        }
 
-        while (tentativas < MAX_TENTATIVAS) {
-            passwd = (String) inStream.readObject();
             if (correctPassword.equals(passwd)) {
-                outStream.writeObject("OK-USER");
-                outStream.flush();
-                return true;
+                return "OK-USER";
             }
 
             tentativas++;
@@ -79,7 +57,18 @@ public class UserManager {
             outStream.flush();
         }
 
-        return false;
+        while (tentativas < MAX_TENTATIVAS) {
+            passwd = (String) inStream.readObject();
+            if (correctPassword.equals(passwd)) {
+                return "OK-USER";
+            }
+
+            tentativas++;
+            outStream.writeObject("WRONG-PWD-" + tentativas);
+            outStream.flush();
+        }
+
+        return null;
     }
 
     /**
@@ -92,15 +81,7 @@ public class UserManager {
      */
     public boolean userExists(String user) throws FileNotFoundException {
         File file = new File(FICHEIRO_USERS);
-        try (Scanner sc = new Scanner(file)) {
-            while (sc.hasNextLine()) {
-                String[] parts = sc.nextLine().split(":");
-                if (parts[0].equals(user)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return findUserPassword(file, user) != null;
     }
 
     /**
@@ -178,5 +159,78 @@ public class UserManager {
             }
         }
         return false;
+    }
+
+    /**
+     * Garante que o ficheiro persistente de utilizadores existe antes de qualquer
+     * leitura ou escrita.
+     *
+     * @return referencia para o ficheiro de utilizadores
+     * @throws IOException se nao for possivel criar o ficheiro quando este ainda
+     *                     nao existe
+     */
+    private File ensureUsersFileExists() throws IOException {
+        File file = new File(FICHEIRO_USERS);
+        if (!file.exists()) {
+            file.createNewFile();
+        }
+        return file;
+    }
+
+    /**
+     * Procura a password atualmente associada a um utilizador no ficheiro
+     * persistente, protegendo a leitura com o lock de registo para evitar corridas
+     * com criacoes concorrentes.
+     *
+     * @param file ficheiro de utilizadores a consultar
+     * @param user username a procurar
+     * @return password associada ao utilizador, ou null se o utilizador ainda nao
+     *         existir
+     * @throws FileNotFoundException se o ficheiro indicado nao estiver disponivel
+     */
+    private String findUserPassword(File file, String user) throws FileNotFoundException {
+        synchronized (userFileLock) {
+            try (Scanner sc = new Scanner(file)) {
+                while (sc.hasNextLine()) {
+                    String[] parts = sc.nextLine().split(":", 2);
+                    if (parts.length == 2 && parts[0].equals(user)) {
+                        return parts[1];
+                    }
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Regista um novo utilizador apenas se este continuar ausente no momento da
+     * escrita, evitando duplicados quando existem pedidos concorrentes para o
+     * mesmo username.
+     *
+     * @param file     ficheiro de utilizadores a atualizar
+     * @param user     username a registar
+     * @param password password a persistir caso o utilizador seja novo
+     * @return null quando o utilizador foi criado neste pedido, ou a password ja
+     *         existente quando outro thread o registou primeiro
+     * @throws IOException se ocorrer um erro ao ler ou atualizar o ficheiro de
+     *                     utilizadores
+     */
+    private String registerUserIfAbsent(File file, String user, String password) throws IOException {
+        synchronized (userFileLock) {
+            try (Scanner sc = new Scanner(file)) {
+                while (sc.hasNextLine()) {
+                    String[] parts = sc.nextLine().split(":", 2);
+                    if (parts.length == 2 && parts[0].equals(user)) {
+                        return parts[1];
+                    }
+                }
+            }
+
+            try (FileWriter fw = new FileWriter(file, true)) {
+                fw.write(user + ":" + password + "\n");
+            }
+
+            return null;
+        }
     }
 }

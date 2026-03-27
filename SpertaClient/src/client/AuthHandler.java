@@ -93,8 +93,12 @@ public class AuthHandler {
             }
 
             System.out.println(respostaAuth);
-            if (respostaAuth.equals("OK-NEW-USER") || respostaAuth.equals("OK-USER")
-                    || respostaAuth.equals("ATTESTATION OK")) {
+            if (respostaAuth.equals("USERON")) {
+                System.out.println("USER ALREADY ONLINE");
+                break;
+            }
+
+            if (respostaAuth.equals("OK-NEW-USER") || respostaAuth.equals("OK-USER")) {
                 success = true;
             }
 

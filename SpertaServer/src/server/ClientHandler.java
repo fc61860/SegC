@@ -47,6 +47,7 @@ public class ClientHandler extends Thread {
     @Override
     public void run() {
         String user = null;
+        boolean loggedIn = false;
 
         try (ObjectOutputStream outStream = new ObjectOutputStream(socket.getOutputStream());
                 ObjectInputStream inStream = new ObjectInputStream(socket.getInputStream())) {
@@ -62,7 +63,8 @@ public class ClientHandler extends Thread {
 
             sendResponse(outStream, "OK");
 
-            if (!userManager.autenticarCliente(user, inStream, outStream)) {
+            String authResponse = userManager.autenticarCliente(user, inStream, outStream);
+            if (authResponse == null) {
                 return;
             }
 
@@ -70,6 +72,9 @@ public class ClientHandler extends Thread {
                 sendResponse(outStream, "USERON");
                 return;
             }
+
+            sendResponse(outStream, authResponse);
+            loggedIn = true;
 
             while (true) {
                 processCommand(user, inStream, outStream);
@@ -81,7 +86,7 @@ public class ClientHandler extends Thread {
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         } finally {
-            if (user != null) {
+            if (loggedIn && user != null) {
                 try {
                     userManager.logoutUser(user);
                 } catch (IOException e) {

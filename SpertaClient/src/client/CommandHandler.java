@@ -1,6 +1,5 @@
 package SpertaClient.src.client;
 
-import java.io.File;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
@@ -79,19 +78,12 @@ public class CommandHandler {
     }
 
     /**
-     * Trata o comando EC com validacao do valor numerico enviado ao dispositivo.
+     * Trata o comando EC, deixando a validacao do valor para o servidor.
      */
     private void handleEcCommand(String[] parts, String input, ObjectOutputStream outStream,
             ObjectInputStream inStream) {
-        if (parts.length != 4 || !parts[3].matches("^[0-9]+$")) {
+        if (parts.length != 4) {
             System.out.println("Formato incorreto. Tente: EC <hm> <d> <int>");
-            return;
-        }
-
-        int valor = Integer.parseInt(parts[3]);
-        if (valor < 0 || valor > 600) {
-            System.out.println(
-                    "Valores  possíveis de <int>: 0(desligar), 1(ligar), ]1..600] (ligar por x minutos, até 600). ");
             return;
         }
 
@@ -110,13 +102,7 @@ public class CommandHandler {
 
         try {
             sendCommand(input, outStream);
-
-            File pastaSummaries = new File("summaries");
-            if (!pastaSummaries.exists()) {
-                pastaSummaries.mkdirs();
-            }
-
-            String nomeFicheiro = "cliente_summary_" + parts[1] + ".txt";
+            String nomeFicheiro = "client_summary_" + parts[1] + ".txt";
             fileTransferManager.processFile(inStream, nomeFicheiro);
         } catch (Exception e) {
             System.out.println("Erro ao comunicar com o servidor.");
@@ -135,7 +121,7 @@ public class CommandHandler {
 
         try {
             sendCommand(input, outStream);
-            String nomeFicheiro = "cliente_log_" + parts[1] + "_" + parts[2] + ".txt";
+            String nomeFicheiro = "client_log_" + parts[1] + "_" + parts[2] + ".csv";
             fileTransferManager.processFile(inStream, nomeFicheiro);
         } catch (Exception e) {
             System.out.println("Erro ao comunicar com o servidor.");

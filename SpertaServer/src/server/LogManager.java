@@ -206,6 +206,13 @@ public class LogManager {
      */
     private void sendLog(String houseName, String device, ObjectOutputStream outStream) throws IOException {
         File log = new File(DIRETORIA_LOGS + houseName + "_" + device + ".csv");
+
+        if (!log.exists() || log.length() == 0) {
+            outStream.writeObject("NODATA");
+            outStream.flush();
+            return;
+        }
+
         outStream.writeObject("OK");
         outStream.flush();
 

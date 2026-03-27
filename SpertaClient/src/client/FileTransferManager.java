@@ -27,6 +27,9 @@ public class FileTransferManager {
             }
 
             long fileSize = inStream.readLong();
+            System.out.println("Server: " + status + ", " + fileSize + " (long), seguido de " + fileSize
+                    + " bytes de dados.");
+
             try (FileOutputStream fileOut = new FileOutputStream(DIRETORIA_DATA + nomeFicheiroLocal)) {
                 byte[] buffer = new byte[4096];
                 int bytesRead;
@@ -39,7 +42,7 @@ public class FileTransferManager {
                 }
             }
 
-            System.out.println("Download concluído! Guardado como: " + nomeFicheiroLocal);
+            System.out.println("Guardado como: " + nomeFicheiroLocal);
         } catch (Exception e) {
             System.out.println("Erro ao tentar receber o ficheiro.");
         }

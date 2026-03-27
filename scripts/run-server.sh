@@ -3,4 +3,4 @@ set -euo pipefail
 
 PORT="${1:-22345}"
 
-java -cp "SpertaServer/src/server" SpertaServer "$PORT"
+java -cp "SpertaServer/bin" SpertaServer "$PORT"

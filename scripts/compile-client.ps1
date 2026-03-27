@@ -1,12 +1,15 @@
 $ErrorActionPreference = 'Stop'
 
+$outputDir = 'SpertaClient/bin'
+$null = New-Item -ItemType Directory -Path $outputDir -Force
+
 $sources = Get-ChildItem 'SpertaClient/src/client/*.java' | ForEach-Object { $_.FullName }
 
 if (-not $sources) {
     Write-Error 'Nao foram encontrados ficheiros Java do cliente para compilar.'
 }
 
-& javac $sources
+& javac -d $outputDir $sources
 
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE

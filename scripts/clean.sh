@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-find "SpertaServer/src/server" -maxdepth 1 -name '*.class' -delete
-find "SpertaClient/src/client" -maxdepth 1 -name '*.class' -delete
+find "SpertaServer/bin" -name '*.class' -delete 2>/dev/null || true
+find "SpertaClient/bin" -name '*.class' -delete 2>/dev/null || true

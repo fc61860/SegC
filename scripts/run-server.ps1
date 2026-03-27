@@ -4,6 +4,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-& java -cp 'SpertaServer/src/server' 'SpertaServer' $Port
+& java -cp 'SpertaServer/bin' 'SpertaServer' $Port
 
 exit $LASTEXITCODE
