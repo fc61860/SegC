@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import javax.net.ssl.SSLServerSocketFactory;
 
 /**
  * Classe principal do servidor SpertaServer.
@@ -26,14 +27,24 @@ public class SpertaServer {
     public static void main(String[] args) {
         System.out.println("Servidor: main");
         int port = 22345;
-
-        if (args.length == 1) {
+        
+        if (args.length == 4) {
             try {
                 port = Integer.parseInt(args[0]);
             } catch (NumberFormatException e) {
                 System.out.println("Erro: Porto tem de ser número. A usar default.");
             }
         }
+
+        String keystorePath = args[2];
+        String keystorePassword = args[3];
+
+        System.setProperty("javax.net.ssl.keyStore", keystorePath);
+        System.setProperty("javax.net.ssl.keyStorePassword", keystorePassword);
+        // Se usar JCEKS no keytool, descomenta a linha abaixo:
+        // System.setProperty("javax.net.ssl.keyStoreType", "JCEKS");
+
+        // Guardar a password-cifra (args[1]) numa variável global/estática se for precisa noutras classes depois
 
         SpertaServer server = new SpertaServer();
         server.startServer(port);
@@ -52,7 +63,9 @@ public class SpertaServer {
         PermissionsManager permissionsManager = new PermissionsManager();
         LogManager logManager = new LogManager();
 
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
+        SSLServerSocketFactory sslssf = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+
+        try (ServerSocket serverSocket = sslssf.createServerSocket(port)) {
             System.out.println("Servidor à escuta na porta: " + port);
 
             while (true) {

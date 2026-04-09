@@ -4,6 +4,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Scanner;
+import javax.net.ssl.SSLSocketFactory;
 import java.net.ConnectException;
 
 /**
@@ -36,7 +37,8 @@ public class ClientSession {
      * @param pass password inicial do utilizador
      */
     public void start(String ip, int port, String user, String pass) {
-        try (Socket clientSocket = new Socket(ip, port);
+        SSLSocketFactory sslsf = (SSLSocketFactory) SSLSocketFactory.getDefault();
+        try (Socket clientSocket = sslsf.createSocket(ip, port);
                 ObjectOutputStream outStream = new ObjectOutputStream(clientSocket.getOutputStream());
                 ObjectInputStream inStream = new ObjectInputStream(clientSocket.getInputStream())) {
             Scanner sc = new Scanner(System.in);
