@@ -1,8 +1,16 @@
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.util.Base64;
+
 import javax.net.ssl.SSLServerSocketFactory;
 
 /**
@@ -102,6 +110,57 @@ public class SpertaServer {
         } catch (IOException e) {
             System.err.println("Erro ao inicializar ficheiros: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Calcula o Hash (SHA-256) de um ficheiro.
+     */
+    public static String calculateHashFile(String caminhoFicheiro) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        FileInputStream fis = new FileInputStream(caminhoFicheiro);
+
+        byte[] buffer = new byte[1024];
+        int bytesLidos;
+        
+        while ((bytesLidos = fis.read(buffer)) != -1) {
+            md.update(buffer, 0, bytesLidos);
+        }
+        fis.close();
+
+        byte[] hashBytes = md.digest();
+        return Base64.getEncoder().encodeToString(hashBytes);
+    }
+
+    /**
+     * Calcula o Hash de um ficheiro e grava-o no ficheiro .hash correspondente.
+     * Este método é chamado sempre que um ficheiro é modificado.
+     */
+    public static void saveHashFile(String caminhoFicheiro) throws Exception {
+        String novoHash = calculateHashFile(caminhoFicheiro);
+        BufferedWriter writer = new BufferedWriter(new FileWriter(caminhoFicheiro + ".hash"));
+        writer.write(novoHash);
+        writer.close();
+    }
+
+    /**
+     * Verifica se o Hash atual do ficheiro bate certo com a assinatura guardada.
+     */
+    public static boolean checkIntegrity(String caminhoFicheiro) {
+        try {
+            File ficheiro = new File(caminhoFicheiro);
+            File ficheiroHash = new File(caminhoFicheiro + ".hash");
+
+            if (!ficheiro.exists()) { return true; }
+            if (!ficheiroHash.exists()) { return false; }
+
+            String hashGuardado = new String(Files.readAllBytes(Paths.get(ficheiroHash.getPath()))).trim();
+            String hashAtual = calculateHashFile(caminhoFicheiro);
+
+            return hashAtual.equals(hashGuardado);
+
+        } catch (Exception e) {
+            return false;
         }
     }
 }

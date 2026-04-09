@@ -8,6 +8,10 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Gere a autenticacao de utilizadores e o registo de sessoes online.
@@ -38,29 +42,41 @@ public class UserManager {
             throws IOException, ClassNotFoundException {
         int tentativas = 0;
         String passwd;
-        // File file = ensureUsersFileExists();
         File file = new File(FICHEIRO_USERS);
-        String correctPassword = findUserPassword(file, user);
+        String[] userData = findUserData(file, user); 
 
-        if (correctPassword == null) {
+        if (userData == null) {
             passwd = (String) inStream.readObject();
-            correctPassword = registerUserIfAbsent(file, user, passwd);
-            if (correctPassword == null) {
+            String existingHash = registerUserIfAbsent(file, user, passwd);
+
+            if (existingHash == null) {
+                outStream.writeObject("SEND-CERT");
+                outStream.flush();
+
+                long certSize = inStream.readLong();
+                byte[] certBytes = new byte[(int) certSize];
+                inStream.readFully(certBytes);
+
+                File certFile = new File("SpertaServer/data/" + user + ".cer");
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(certFile)) {
+                    fos.write(certBytes);
+                }
+
                 return "OK-NEW-USER";
+            } else {
+                userData = findUserData(file, user);
             }
-
-            if (correctPassword.equals(passwd)) {
-                return "OK-USER";
-            }
-
-            tentativas++;
-            outStream.writeObject("WRONG-PWD-" + tentativas);
-            outStream.flush();
         }
+
+        String hashGuardado = userData[0];
+        String saltGuardado = userData[1];
 
         while (tentativas < MAX_TENTATIVAS) {
             passwd = (String) inStream.readObject();
-            if (correctPassword.equals(passwd)) {
+            
+            String hashCalculado = calculateHashPass(passwd, saltGuardado);
+
+            if (hashGuardado.equals(hashCalculado)) {
                 return "OK-USER";
             }
 
@@ -204,6 +220,25 @@ public class UserManager {
     }
 
     /**
+     * Procura os dados de autenticação de um utilizador.
+     * @return Um array com [Hash_Guardado, Salt_Guardado], ou null se não existir.
+     */
+    private String[] findUserData(File file, String user) throws FileNotFoundException {
+        synchronized (userFileLock) {
+            try (Scanner sc = new Scanner(file)) {
+                while (sc.hasNextLine()) {
+                    // Agora dividimos por 3 partes: user:hash:salt
+                    String[] parts = sc.nextLine().split(":", 3); 
+                    if (parts.length == 3 && parts[0].equals(user)) {
+                        return new String[]{parts[1], parts[2]};
+                    }
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
      * Regista um novo utilizador apenas se este continuar ausente no momento da
      * escrita, evitando duplicados quando existem pedidos concorrentes para o
      * mesmo username.
@@ -220,18 +255,52 @@ public class UserManager {
         synchronized (userFileLock) {
             try (Scanner sc = new Scanner(file)) {
                 while (sc.hasNextLine()) {
-                    String[] parts = sc.nextLine().split(":", 2);
-                    if (parts.length == 2 && parts[0].equals(user)) {
+                    String[] parts = sc.nextLine().split(":", 3); 
+                    if (parts.length == 3 && parts[0].equals(user)) {
                         return parts[1];
                     }
                 }
             }
 
+            String saltAleatorio = genSalt();
+            String hashPassword = calculateHashPass(password, saltAleatorio);
+
             try (FileWriter fw = new FileWriter(file, true)) {
-                fw.write(user + ":" + password + "\n");
+                fw.write(user + ":" + hashPassword + ":" + saltAleatorio + "\n");
+            }
+
+            try {
+                SpertaServer.saveHashFile(file.getPath());
+            } catch (Exception e) {
+                System.err.println("Erro ao assinar novo user.");
             }
 
             return null;
+        }
+    }
+
+    /**
+     * Gera um Salt aleatório usando SecureRandom.
+     */
+    private String genSalt() {
+        SecureRandom sr = new SecureRandom();
+        byte[] saltBytes = new byte[16];
+        sr.nextBytes(saltBytes);
+        return Base64.getEncoder().encodeToString(saltBytes);
+    }
+
+    /**
+     * Calcula o Hash SHA-256 da concatenação da Password com o Salt.
+     */
+    private String calculateHashPass(String password, String salt) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            // Concatena a password e o salt (password || salt)
+            String textoParaHash = password + salt; 
+            byte[] hashBytes = md.digest(textoParaHash.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hashBytes);
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao calcular hash da password", e);
         }
     }
 }

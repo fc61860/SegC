@@ -1,9 +1,12 @@
 package SpertaClient.src.client;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.security.KeyStore;
 import java.util.Scanner;
+import java.security.cert.Certificate;
 
 /**
  * Trata a attestation remota e a autenticacao do utilizador no servidor.
@@ -94,6 +97,12 @@ public class AuthHandler {
                 break;
             }
 
+            if (respostaAuth.equals("SEND-CERT")) {
+                sendCertificate(user, outStream);// Envia o certificado para o server
+                
+                respostaAuth = (String) inStream.readObject();
+            }
+
             System.out.println(respostaAuth);
             if (respostaAuth.equals("USERON")) {
                 System.out.println("USER ALREADY ONLINE");
@@ -113,5 +122,31 @@ public class AuthHandler {
         }
 
         return success;
+    }
+
+    /**
+     * Extrai o certificado público da Keystore do Cliente e envia os bytes para o Servidor.
+     */
+    private void sendCertificate(String user, ObjectOutputStream outStream) throws Exception {
+        String keystorePath = System.getProperty("javax.net.ssl.keyStore");
+        String keystorePass = System.getProperty("javax.net.ssl.keyStorePassword");
+        
+        KeyStore ks = KeyStore.getInstance("JKS"); 
+        try (FileInputStream fis = new FileInputStream(keystorePath)) {
+            ks.load(fis, keystorePass.toCharArray());
+        }
+
+        // O alias no keytool tem de ser igual ao nome do user!
+        Certificate cert = ks.getCertificate(user);
+        if (cert == null) {
+            throw new Exception("Certificado para o utilizador '" + user + "' não encontrado na keystore!");
+        }
+
+        byte[] certBytes = cert.getEncoded();
+        
+        outStream.writeLong(certBytes.length);
+        outStream.flush();
+        outStream.write(certBytes);
+        outStream.flush();
     }
 }
