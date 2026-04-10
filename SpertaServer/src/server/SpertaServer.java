@@ -35,7 +35,11 @@ public class SpertaServer {
     public static void main(String[] args) {
         System.out.println("Servidor: main");
         int port = 22345;
-        
+        if(args.length != 4) {
+            System.out.println("Erro!");
+            System.out.println("Formato exigido: SpertaServer <port> <password-cifra> <keystore> <password-keystore>");
+            System.exit(-1);
+        }
         if (args.length == 4) {
             try {
                 port = Integer.parseInt(args[0]);
@@ -49,11 +53,10 @@ public class SpertaServer {
 
         System.setProperty("javax.net.ssl.keyStore", keystorePath);
         System.setProperty("javax.net.ssl.keyStorePassword", keystorePassword);
-        // Se usar JCEKS no keytool, descomenta a linha abaixo:
-        // System.setProperty("javax.net.ssl.keyStoreType", "JCEKS");
 
-        // Guardar a password-cifra (args[1]) numa variável global/estática se for precisa noutras classes depois
-
+        // Guardar a password-cifra (args[1]) numa variável global/estática se for
+        // precisa noutras classes depois
+        System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
         SpertaServer server = new SpertaServer();
         server.startServer(port);
     }
@@ -122,7 +125,7 @@ public class SpertaServer {
 
         byte[] buffer = new byte[1024];
         int bytesLidos;
-        
+
         while ((bytesLidos = fis.read(buffer)) != -1) {
             md.update(buffer, 0, bytesLidos);
         }
@@ -151,8 +154,12 @@ public class SpertaServer {
             File ficheiro = new File(caminhoFicheiro);
             File ficheiroHash = new File(caminhoFicheiro + ".hash");
 
-            if (!ficheiro.exists()) { return true; }
-            if (!ficheiroHash.exists()) { return false; }
+            if (!ficheiro.exists()) {
+                return true;
+            }
+            if (!ficheiroHash.exists()) {
+                return false;
+            }
 
             String hashGuardado = new String(Files.readAllBytes(Paths.get(ficheiroHash.getPath()))).trim();
             String hashAtual = calculateHashFile(caminhoFicheiro);

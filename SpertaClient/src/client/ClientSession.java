@@ -4,6 +4,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.Scanner;
+
+import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import java.net.ConnectException;
 
@@ -38,11 +40,13 @@ public class ClientSession {
      */
     public void start(String ip, int port, String user, String pass) {
         SSLSocketFactory sslsf = (SSLSocketFactory) SSLSocketFactory.getDefault();
-        try (Socket clientSocket = sslsf.createSocket(ip, port);
+        try (SSLSocket clientSocket = (SSLSocket) sslsf.createSocket(ip, port);
                 ObjectOutputStream outStream = new ObjectOutputStream(clientSocket.getOutputStream());
                 ObjectInputStream inStream = new ObjectInputStream(clientSocket.getInputStream())) {
+            // failFast
+            clientSocket.startHandshake();
             Scanner sc = new Scanner(System.in);
-
+            //apartir daqui nao funciona por causa do hash
             if (!authHandler.authenticate(SpertaClient.class, user, pass, sc, outStream, inStream)) {
                 return;
             }

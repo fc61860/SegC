@@ -33,3 +33,8 @@ E os ficheiros .csv são guardados na pasta SpertaServer\data\logs
 
 O ficheiro client_summary_<nomedacasa>.txt criado com o comando RT <nomedacasa> é guardado na pasta SpertaClient\data
 tal como o ficheiro client_log_<nomedacasa>.csv criado com o comando RH <nomedacasa>
+
+Para gerar de novo os certificados:
+
+1. Correr keytool commands em /security
+2. Password: changeit
