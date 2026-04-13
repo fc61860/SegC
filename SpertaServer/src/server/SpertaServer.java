@@ -67,6 +67,15 @@ public class SpertaServer {
      * @param port porta TCP onde o servidor aceita clientes
      */
     public void startServer(int port) {
+        // Verificar Integridade Logo no Arranque 
+        if (!checkIntegrity(FICHEIRO_CASAS) || 
+            !checkIntegrity(FICHEIRO_USERS) || 
+            !checkIntegrity(FICHEIRO_ESTADOS)) {
+            
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
+        }
+
         inicializarEstrutura();
         UserManager userManager = new UserManager();
         HouseManager houseManager = new HouseManager();
@@ -103,9 +112,10 @@ public class SpertaServer {
             File logsDir = new File(DIRETORIA_LOGS);
             logsDir.mkdirs();
 
-            new File(FICHEIRO_USERS).createNewFile();
-            new File(FICHEIRO_CASAS).createNewFile();
-            new File(FICHEIRO_ESTADOS).createNewFile();
+            // Assinar os ficheiros logo no segundo em que nascem
+            if (new File(FICHEIRO_USERS).createNewFile()) { saveHashFile(FICHEIRO_USERS); }
+            if (new File(FICHEIRO_CASAS).createNewFile()) { saveHashFile(FICHEIRO_CASAS); }
+            if (new File(FICHEIRO_ESTADOS).createNewFile()) { saveHashFile(FICHEIRO_ESTADOS); }
 
             File usersOnlineFile = new File(FICHEIRO_CLIENTS_ONLINE);
             PrintWriter writer = new PrintWriter(usersOnlineFile);
@@ -113,6 +123,9 @@ public class SpertaServer {
         } catch (IOException e) {
             System.err.println("Erro ao inicializar ficheiros: " + e.getMessage());
             e.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("Erro fatal ao assinar os ficheiros iniciais.");
+            System.exit(-1);
         }
     }
 
