@@ -9,6 +9,7 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.Base64;
 
 import javax.net.ssl.SSLServerSocketFactory;
@@ -35,7 +36,7 @@ public class SpertaServer {
     public static void main(String[] args) {
         System.out.println("Servidor: main");
         int port = 22345;
-        if(args.length != 4) {
+        if (args.length != 4) {
             System.out.println("Erro!");
             System.out.println("Formato exigido: SpertaServer <port> <password-cifra> <keystore> <password-keystore>");
             System.exit(-1);
@@ -54,8 +55,12 @@ public class SpertaServer {
         System.setProperty("javax.net.ssl.keyStore", keystorePath);
         System.setProperty("javax.net.ssl.keyStorePassword", keystorePassword);
 
-        // Guardar a password-cifra (args[1]) numa variável global/estática se for
-        // precisa noutras classes depois
+        String passwordCifra = args[1];
+
+        byte[] salt = loadOrCreateSalt();
+
+        CryptoManager.init(passwordCifra, salt);
+
         System.setProperty("javax.net.ssl.keyStoreType", "PKCS12");
         SpertaServer server = new SpertaServer();
         server.startServer(port);
@@ -68,16 +73,15 @@ public class SpertaServer {
      */
     public void startServer(int port) {
         inicializarEstrutura();
-        // Verificar Integridade Logo no Arranque 
-        if (!checkIntegrity(FICHEIRO_CASAS) || 
-            !checkIntegrity(FICHEIRO_USERS) || 
-            !checkIntegrity(FICHEIRO_ESTADOS)) {
-            
+        // Verificar Integridade Logo no Arranque
+        if (!checkIntegrity(FICHEIRO_CASAS) ||
+                !checkIntegrity(FICHEIRO_USERS) ||
+                !checkIntegrity(FICHEIRO_ESTADOS)) {
+
             System.err.println("NOK-INTEGRITY");
             System.exit(-1);
         }
 
-        
         UserManager userManager = new UserManager();
         HouseManager houseManager = new HouseManager();
         DeviceManager deviceManager = new DeviceManager();
@@ -114,9 +118,15 @@ public class SpertaServer {
             logsDir.mkdirs();
 
             // Assinar os ficheiros logo no segundo em que nascem
-            if (new File(FICHEIRO_USERS).createNewFile()) { saveHashFile(FICHEIRO_USERS); }
-            if (new File(FICHEIRO_CASAS).createNewFile()) { saveHashFile(FICHEIRO_CASAS); }
-            if (new File(FICHEIRO_ESTADOS).createNewFile()) { saveHashFile(FICHEIRO_ESTADOS); }
+            if (new File(FICHEIRO_USERS).createNewFile()) {
+                saveHashFile(FICHEIRO_USERS);
+            }
+            if (new File(FICHEIRO_CASAS).createNewFile()) {
+                saveHashFile(FICHEIRO_CASAS);
+            }
+            if (new File(FICHEIRO_ESTADOS).createNewFile()) {
+                saveHashFile(FICHEIRO_ESTADOS);
+            }
 
             File usersOnlineFile = new File(FICHEIRO_CLIENTS_ONLINE);
             PrintWriter writer = new PrintWriter(usersOnlineFile);
@@ -182,6 +192,26 @@ public class SpertaServer {
 
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    private static byte[] loadOrCreateSalt() {
+        try {
+            File saltFile = new File("SpertaServer/salt.bin");
+
+            if (saltFile.exists()) {
+                return Files.readAllBytes(saltFile.toPath());
+            } else {
+                byte[] salt = new byte[16];
+                SecureRandom random = new SecureRandom();
+                random.nextBytes(salt);
+
+                Files.write(saltFile.toPath(), salt);
+                return salt;
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException("Erro ao carregar/gerar salt", e);
         }
     }
 }
