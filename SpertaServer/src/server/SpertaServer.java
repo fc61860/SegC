@@ -67,6 +67,7 @@ public class SpertaServer {
      * @param port porta TCP onde o servidor aceita clientes
      */
     public void startServer(int port) {
+        inicializarEstrutura();
         // Verificar Integridade Logo no Arranque 
         if (!checkIntegrity(FICHEIRO_CASAS) || 
             !checkIntegrity(FICHEIRO_USERS) || 
@@ -76,7 +77,7 @@ public class SpertaServer {
             System.exit(-1);
         }
 
-        inicializarEstrutura();
+        
         UserManager userManager = new UserManager();
         HouseManager houseManager = new HouseManager();
         DeviceManager deviceManager = new DeviceManager();

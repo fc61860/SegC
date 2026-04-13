@@ -1,7 +1,8 @@
 *.txt
 *.csv
 *.class
-
+*.hash
+*.jar
+    
 !tests/**/*.txt
 !tests/**/*.csv
-!SpertaServer/data/client_size.txt
