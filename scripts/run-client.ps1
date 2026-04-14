@@ -23,6 +23,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-& java -cp 'SpertaClient/bin/classes' 'SpertaClient.src.client.SpertaClient' $ServerAddress $Truststore $PasswordTruststore $Keystore $PasswordKeystore $UserName $Password
+# Voltámos a usar o -jar agora que já funciona!
+& java -jar "SpertaClient/bin/SpertaClient.jar" $ServerAddress $Truststore $PasswordTruststore $Keystore $PasswordKeystore $UserName $Password
 
 exit $LASTEXITCODE

@@ -38,3 +38,4 @@ Para gerar de novo os certificados:
 
 1. Correr keytool commands em /security
 2. Password: changeit
+3. User: client1
