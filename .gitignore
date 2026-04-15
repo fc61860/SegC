@@ -4,6 +4,7 @@
 *.hash
 *.jar
 *.bin
+SpertaServer/data/
     
 !tests/**/*.txt
 !tests/**/*.csv
