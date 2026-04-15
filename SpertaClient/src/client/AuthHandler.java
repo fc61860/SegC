@@ -7,6 +7,7 @@ import java.io.ObjectOutputStream;
 import java.security.KeyStore;
 import java.util.Scanner;
 import java.security.cert.Certificate;
+import java.security.MessageDigest;
 
 /**
  * Trata a attestation remota e a autenticacao do utilizador no servidor.
@@ -57,12 +58,31 @@ public class AuthHandler {
      */
     private boolean performAttestation(Class<?> codeSourceClass, ObjectOutputStream outStream,
             ObjectInputStream inStream) throws Exception {
+        
         File clientFile = new File(codeSourceClass.getProtectionDomain().getCodeSource().getLocation().toURI());
-        long size = clientFile.length();
+        
+        // Calcular o Hash SHA-256
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        try (FileInputStream fis = new FileInputStream(clientFile)) {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                md.update(buffer, 0, bytesRead);
+            }
+        }
+        
+        // Converter o Hash para String
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : md.digest()) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+        String myHash = hexString.toString().toUpperCase();
 
         outStream.writeObject(clientFile.getName());
         outStream.flush();
-        outStream.writeLong(size);
+        outStream.writeObject(myHash);
         outStream.flush();
 
         String answer = (String) inStream.readObject();
