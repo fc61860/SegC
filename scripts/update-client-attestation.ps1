@@ -13,5 +13,5 @@ if (-not (Test-Path $attestationFile)) {
     New-Item -ItemType File -Path $attestationFile -Force | Out-Null
 }
 
-$jarSize = (Get-Item $jarPath).Length
-Set-Content -Path $attestationFile -Value "SpertaClient.jar:$jarSize" -Encoding ascii
+$jarHash = (Get-FileHash -Path $jarPath -Algorithm SHA256).Hash
+Set-Content -Path $attestationFile -Value "SpertaClient.jar:$jarHash" -Encoding ascii

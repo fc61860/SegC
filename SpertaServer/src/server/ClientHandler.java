@@ -115,7 +115,7 @@ public class ClientHandler extends Thread {
     private boolean validateClient(ObjectInputStream inStream, ObjectOutputStream outStream) throws IOException {
         try {
             String clientName = (String) inStream.readObject();
-            long clientSize = inStream.readLong();
+            String clientHash = (String) inStream.readObject();
 
             try (BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CLIENTSIZE))) {
                 String line = reader.readLine();
@@ -131,8 +131,10 @@ public class ClientHandler extends Thread {
                 }
 
                 String expectedName = parts[0];
-                long expectedSize = Long.parseLong(parts[1]);
-                if (!expectedName.equals(clientName) || clientSize != expectedSize) {
+                String expectedHash = parts[1];
+                
+                if (!expectedName.equals(clientName) || !clientHash.equals(expectedHash)) {
+                    System.out.println("Atestação falhou! Hash inválido ou cliente adulterado.");
                     sendResponse(outStream, "NOK");
                     return false;
                 }
@@ -140,7 +142,7 @@ public class ClientHandler extends Thread {
 
             sendResponse(outStream, "OK");
             return true;
-        } catch (ClassNotFoundException | NumberFormatException e) {
+        } catch (ClassNotFoundException e) {
             sendResponse(outStream, "NOK");
             return false;
         }

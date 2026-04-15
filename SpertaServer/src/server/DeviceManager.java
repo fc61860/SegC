@@ -295,7 +295,8 @@ public class DeviceManager {
     }
 
     /**
-     * Substitui um ficheiro persistente pelo respetivo ficheiro temporario.
+     * Substitui um ficheiro persistente pelo respetivo ficheiro temporario e
+     * atualiza o HMAC para garantir a integridade.
      *
      * @param source ficheiro temporario com o novo conteudo
      * @param target ficheiro final a atualizar
@@ -308,6 +309,12 @@ public class DeviceManager {
 
         if (!source.renameTo(target)) {
             throw new IOException("Nao foi possivel renomear o ficheiro temporario para " + target.getName());
+        }
+
+        try {
+            SpertaServer.saveHashFile(target.getPath());
+        } catch (Exception e) {
+            System.err.println("Erro ao atualizar o HMAC de " + target.getName() + ": " + e.getMessage());
         }
     }
 }

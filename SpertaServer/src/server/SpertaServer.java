@@ -1,6 +1,5 @@
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -8,10 +7,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLServerSocketFactory;
 
 /**
@@ -141,22 +141,21 @@ public class SpertaServer {
     }
 
     /**
-     * Calcula o Hash (SHA-256) de um ficheiro.
+     * Calcula o HMAC SHA-256 do ficheiro usando a password secreta do servidor.
      */
-    public static String calculateHashFile(String caminhoFicheiro) throws Exception {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        FileInputStream fis = new FileInputStream(caminhoFicheiro);
-
-        byte[] buffer = new byte[1024];
-        int bytesLidos;
-
-        while ((bytesLidos = fis.read(buffer)) != -1) {
-            md.update(buffer, 0, bytesLidos);
-        }
-        fis.close();
-
-        byte[] hashBytes = md.digest();
-        return Base64.getEncoder().encodeToString(hashBytes);
+    private static String calculateHashFile(String caminhoFicheiro) throws Exception {
+        byte[] fileBytes = Files.readAllBytes(Paths.get(caminhoFicheiro));
+        
+        String secretPassword = CryptoManager.getPassword();
+        
+        Mac mac = Mac.getInstance("HmacSHA256");
+        SecretKeySpec secretKeySpec = new SecretKeySpec(secretPassword.getBytes(), "HmacSHA256");
+        mac.init(secretKeySpec);
+        
+        byte[] hmacBytes = mac.doFinal(fileBytes);
+        
+        // Converter para Base64 para ser fácil de guardar no ficheiro .hash
+        return Base64.getEncoder().encodeToString(hmacBytes);
     }
 
     /**

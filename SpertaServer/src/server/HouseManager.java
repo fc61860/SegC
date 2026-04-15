@@ -33,6 +33,13 @@ public class HouseManager {
             writer.newLine();
         }
 
+        try {
+            SpertaServer.saveHashFile(FICHEIRO_CASAS); 
+        } catch (Exception e) {
+            System.err.println("Erro ao atualizar o HMAC do ficheiro de casas: " + e.getMessage());
+            return "NOK";
+        }
+
         return "OK";
     }
 
