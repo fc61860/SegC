@@ -38,7 +38,7 @@ Para gerar de novo os certificados:
 
 1. Correr keytool commands em /security
 2. Password: changeit
-3. User: client1
 
+# WINDOWS
 Para ligar o server: .\scripts\run-server.ps1 -Port 22345 -PasswordCifra "minhaCifraSecreta" -Keystore "security/server-keystore.p12" -PasswordKeystore "changeit"
-Para ligar o cliente: .\scripts\run-client.ps1 -ServerAddress "127.0.0.1:22345" -Truststore "security/client-truststore.jks" -PasswordTruststore "changeit" -Keystore "security/client1-keystore.p12" -PasswordKeystore "changeit" -UserName "joao" -Password "PassDoJoao123"
+Para ligar o cliente: .\scripts\run-client.ps1 -ServerAddress "127.0.0.1:22345" -Truststore "security/client-truststore.jks" -PasswordTruststore "changeit" -Keystore "security/client1-keystore.p12" -PasswordKeystore "changeit" -UserName "client1" -Password "MinhaPass123"

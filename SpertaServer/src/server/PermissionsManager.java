@@ -184,7 +184,7 @@ public class PermissionsManager {
 
     /**
      * Substitui o ficheiro de destino por um ficheiro temporario previamente
-     * escrito.
+     * escrito e atualiza a sua assinatura HMAC.
      *
      * @param source ficheiro temporario com o novo conteudo
      * @param target ficheiro final a substituir
@@ -197,6 +197,12 @@ public class PermissionsManager {
 
         if (!source.renameTo(target)) {
             throw new IOException("Nao foi possivel renomear o ficheiro temporario para " + target.getName());
+        }
+
+        try {
+            SpertaServer.saveHashFile(target.getPath());
+        } catch (Exception e) {
+            System.err.println("Erro ao atualizar o HMAC de " + target.getName() + ": " + e.getMessage());
         }
     }
 }
