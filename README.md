@@ -1,28 +1,49 @@
 Projeto Segurança e Confiabilidade
 
-|----------------------------------- WINDOWS-------------------------------||-------------------------------------------- UBUNTU ----------------------------------|
-|   Apartir do diretório raiz                                              ||   Diretório raiz, dar permissao aos scripts na primeira vez: chmod +x scripts/*.sh   |
-|---------------------------------- COMPILAÇÃO ----------------------------||------------------------------------------ COMPILAÇÃO --------------------------------|
-|   Servidor:                                                              ||   Servidor:                                                                          |
-|       - .\scripts\compile-server.ps1                                     ||       - ./scripts/compile-server.sh                                                  |
-|   Cliente:                                                               ||   Cliente:                                                                           |
-|       - .\scripts\compile-client.ps1                                     ||       - ./scripts/compile-client.sh                                                  |
-|       - .\scripts\update-client-attestation.ps1                          ||       - ./scripts/update-client-attestation.sh                                       |
-|----------------------------------- EXECUÇÃO -----------------------------||------------------------------------------ EXECUÇÃO ----------------------------------|
-|   Servidor:                                                              ||   Servidor:                                                                          |
-|       - .\scripts\run-server.ps1                                         ||       - ./scripts/run-server.sh                                                      |
-|   Cliente:                                                               ||   Cliente:                                                                           |
-|       - .\scripts\run-client.ps1 <serverAddress> <userName> <password>   ||       - ./scripts/run-client.sh <serverAddress> <userName> <password>                |
-|------------------------------ LIMPEZA (.class) --------------------------||------------------------------------- LIMPEZA (.class) -------------------------------|
-|   Windows PowerShell:                                                    ||   Ubuntu Bash:                                                                       |
-|       - .\scripts\clean.ps1                                              ||       - ./scripts/clean.sh                                                           |
-|---------------------------------- RESET-DATA ----------------------------||----------------------------------------- RESET-DATA ---------------------------------|
-|   Windows PowerShell:                                                    ||   Ubuntu Bash:                                                                       |
-|       - .\scripts\reset-data.ps1                                         ||       - ./scripts/reset-data.sh                                                      |
-|--------------------------------------------------------------------------||--------------------------------------------------------------------------------------|
+|------------------------------------------- WINDOWS---------------------------------------------|
+|   Apartir do diretório raiz                                                                    |
+|------------------------------------------ COMPILAÇÃO ------------------------------------------|
+|   Servidor:                                                                                    |
+|       - .\scripts\compile-server.ps1                                                           |
+|   Cliente:                                                                                     |
+|       - .\scripts\compile-client.ps1                                                           |
+|       - .\scripts\update-client-attestation.ps1                                                |
+|------------------------------------------ EXECUÇÃO --------------------------------------------|
+|   Servidor:                                                                                    |
+|       - .\scripts\run-server.ps1 -PasswordCifra <pw> -Keystore <ks> -PasswordKeystore <pw-ks>  |
+|   Cliente:                                                                                     |
+|       - .\scripts\run-client.ps1 <serverAddress> <userName> <password>                         |
+|---------------------------------------- LIMPEZA (.class) --------------------------------------|
+|   Windows PowerShell:                                                                          |
+|       - .\scripts\clean.ps1                                                                    |
+|------------------------------------------ RESET-DATA ------------------------------------------|
+|   Windows PowerShell:                                                                          |
+|       - .\scripts\reset-data.ps1                                                               |
+|------------------------------------------------------------------------------------------------|
+|                                                                                                |
+|-------------------------------------------- UBUNTU --------------------------------------------|
+|   Diretório raiz, dar permissao aos scripts na primeira vez: chmod +x scripts/*.sh             |
+|------------------------------------------ COMPILAÇÃO ------------------------------------------|
+|   Servidor:                                                                                    |
+|       - ./scripts/compile-server.sh                                                            |
+|   Cliente:                                                                                     |
+|       - ./scripts/compile-client.sh                                                            |
+|       - ./scripts/update-client-attestation.sh                                                 |
+|------------------------------------------ EXECUÇÃO --------------------------------------------|
+|   Servidor:                                                                                    |
+|       - ./scripts/run-server.sh <port> <password-cifra> <keystore> <password-keystore>         |
+|   Cliente:                                                                                     |
+|       - ./scripts/run-client.sh <serverAddress> <userName> <password>                          |
+|---------------------------------------- LIMPEZA (.class) --------------------------------------|
+|   Ubuntu Bash:                                                                                 |
+|       - ./scripts/clean.sh                                                                     |
+|------------------------------------------ RESET-DATA ------------------------------------------|
+|   Ubuntu Bash:                                                                                 |
+|       - ./scripts/reset-data.sh                                                                |
+|------------------------------------------------------------------------------------------------|
 
 O script compile-client apenas compila o cliente e gera o ficheiro SpertaClient\bin\SpertaClient.jar
-O script update-client-attestation atualiza o ficheiro SpertaServer\data\client_size.txt com o nome e o tamanho do SpertaClient.jar
+O script update-client-attestation atualiza o ficheiro SpertaServer\data\client_size.txt com o nome e o hash SHA-256 do SpertaClient.jar
 
 As classes .java relativas ao servidor estão na pasta SpertaServer\src\server e relativas ao cliente na pasta SpertaClient\src\client
 

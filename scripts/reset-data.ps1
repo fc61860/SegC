@@ -12,11 +12,9 @@ $filesToReset = @(
 )
 
 foreach ($file in $filesToReset) {
-    if (-not (Test-Path $file)) {
-        New-Item -ItemType File -Path $file -Force | Out-Null
+    if (Test-Path $file) {
+        Remove-Item -Path $file -Force
     }
-
-    Set-Content -Path $file -Value $null
 }
 
 if (Test-Path $logsDir) {
