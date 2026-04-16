@@ -1,5 +1,6 @@
-Projeto Segurança e Confiabilidade
+## Projeto Segurança e Confiabilidade
 
+## Correr o Programa
 |------------------------------------------- WINDOWS---------------------------------------------|
 |   Apartir do diretório raiz                                                                    |
 |------------------------------------------ COMPILAÇÃO ------------------------------------------|
@@ -42,8 +43,12 @@ Projeto Segurança e Confiabilidade
 |       - ./scripts/reset-data.sh                                                                |
 |------------------------------------------------------------------------------------------------|
 
+## Scripts, Classes e Ficheiros de Texto
 O script compile-client apenas compila o cliente e gera o ficheiro SpertaClient\bin\SpertaClient.jar
-O script update-client-attestation atualiza o ficheiro SpertaServer\data\client_size.txt com o nome e o hash SHA-256 do SpertaClient.jar
+
+O ficheiro client_size.txt passou a chamar-se client_attestation.txt
+
+O script update-client-attestation copia o SpertaClient.jar para SpertaServer\data\SpertaClient.jar (cópia de referência) e guarda esse caminho em SpertaServer\data\client_attestation.txt
 
 As classes .java relativas ao servidor estão na pasta SpertaServer\src\server e relativas ao cliente na pasta SpertaClient\src\client
 

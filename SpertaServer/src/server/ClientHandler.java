@@ -1,17 +1,23 @@
 import java.io.BufferedReader;
 import java.io.EOFException;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 
 /**
  * Trata uma sessao individual de cliente, incluindo attestation, autenticacao e
  * processamento de comandos do protocolo.
  */
 public class ClientHandler extends Thread {
-    private static final String FICHEIRO_CLIENTSIZE = "SpertaServer/data/client_size.txt";
+    private static final String FICHEIRO_CLIENTATTESTATION = "SpertaServer/data/client_attestation.txt";
 
     private final Socket socket;
     private final UserManager userManager;
@@ -103,47 +109,72 @@ public class ClientHandler extends Thread {
     }
 
     /**
-     * Valida a attestation do cliente comparando o tamanho enviado com o valor
-     * esperado pelo servidor.
+     * Valida a attestation do cliente com protocolo nonce + SHA-256 anti-replay.
+     * O servidor gera um nonce, envia ao cliente, e compara o hash recebido
+     * com SHA-256(nonce_bytes || bytes_JAR_referencia) calculado localmente.
      *
      * @param inStream  stream de entrada da ligacao
      * @param outStream stream de saida da ligacao
      * @return true se a validacao for bem-sucedida; false caso contrario
-     * @throws IOException se ocorrer um erro na leitura do tamanho ou no envio da
-     *                     resposta
+     * @throws IOException se ocorrer um erro na comunicacao
      */
     private boolean validateClient(ObjectInputStream inStream, ObjectOutputStream outStream) throws IOException {
         try {
-            String clientName = (String) inStream.readObject();
-            String clientHash = (String) inStream.readObject();
+            // Gerar nonce aleatorio
+            SecureRandom sr = new SecureRandom();
+            byte[] nonceBytes = new byte[8];
+            sr.nextBytes(nonceBytes);
+            long nonce = ByteBuffer.wrap(nonceBytes).getLong();
 
-            try (BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CLIENTSIZE))) {
-                String line = reader.readLine();
-                if (line == null || !line.contains(":")) {
+            // Enviar nonce ao cliente
+            outStream.writeLong(nonce);
+            outStream.flush();
+
+            // Ler caminho da copia de referencia do JAR
+            String refJarPath;
+            try (BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CLIENTATTESTATION))) {
+                refJarPath = reader.readLine();
+                if (refJarPath == null || refJarPath.trim().isEmpty()) {
                     sendResponse(outStream, "NOK");
                     return false;
                 }
-
-                String[] parts = line.split(":", 2);
-                if (parts.length != 2) {
-                    sendResponse(outStream, "NOK");
-                    return false;
-                }
-
-                String expectedName = parts[0];
-                String expectedHash = parts[1];
-                
-                if (!expectedName.equals(clientName) || !clientHash.equals(expectedHash)) {
-                    System.out.println("Atestação falhou! Hash inválido ou cliente adulterado.");
-                    sendResponse(outStream, "NOK");
-                    return false;
-                }
+                refJarPath = refJarPath.trim();
             }
 
-            sendResponse(outStream, "OK");
+            // Ler bytes do JAR de referencia
+            File refJar = new File(refJarPath);
+            if (!refJar.exists()) {
+                sendResponse(outStream, "NOK");
+                return false;
+            }
+            byte[] refJarBytes = Files.readAllBytes(refJar.toPath());
+
+            // Calcular SHA-256(nonce_bytes || bytes_JAR_referencia)
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            md.update(nonceBytes);
+            md.update(refJarBytes);
+            byte[] expectedHashBytes = md.digest();
+
+            StringBuilder expectedHex = new StringBuilder();
+            for (byte b : expectedHashBytes) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) expectedHex.append('0');
+                expectedHex.append(hex);
+            }
+            String expectedHash = expectedHex.toString().toUpperCase();
+
+            // Receber hash do cliente e comparar
+            String clientHash = (String) inStream.readObject();
+            if (!clientHash.equals(expectedHash)) {
+                System.out.println("Atestacao falhou! Hash invalido ou cliente adulterado.");
+                sendResponse(outStream, "NOK");
+                return false;
+            }
+
+            sendResponse(outStream, "OK-ATTEST");
             return true;
-        } catch (ClassNotFoundException e) {
-            sendResponse(outStream, "NOK");
+        } catch (ClassNotFoundException | NoSuchAlgorithmException e) {
+            sendResponse(outStream, "NOK-ATTEST");
             return false;
         }
     }
