@@ -15,3 +15,4 @@ mkdir -p "$data_dir" "$logs_dir" "$client_data_dir"
 find "$logs_dir" -maxdepth 1 -type f -delete
 find "$client_data_dir" -maxdepth 1 -type f -delete
 find "$data_dir" -maxdepth 1 -name '*.tmp' -type f -delete
+find "$data_dir" -maxdepth 1 -name '*.hash' -type f -delete

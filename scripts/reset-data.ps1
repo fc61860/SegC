@@ -32,3 +32,4 @@ if (Test-Path $clientDataDir) {
 }
 
 Get-ChildItem $dataDir -Filter '*.tmp' -File -ErrorAction SilentlyContinue | Remove-Item -Force
+Get-ChildItem $dataDir -Filter '*.hash' -File -ErrorAction SilentlyContinue | Remove-Item -Force
