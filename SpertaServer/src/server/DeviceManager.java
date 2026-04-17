@@ -33,6 +33,10 @@ public class DeviceManager {
             return "NOK";
         }
 
+        if (!SpertaServer.checkIntegrity(FICHEIRO_ESTADOS)) {
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
+        }
         String line = houseManager.findHouseLine(houseName);
         if (line == null) {
             return "NOHM";
@@ -72,6 +76,10 @@ public class DeviceManager {
             return "NOK";
         }
 
+        if (!SpertaServer.checkIntegrity(FICHEIRO_ESTADOS)) {
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
+        }
         String line = houseManager.findHouseLine(houseName);
         if (line == null) {
             return "NOHM";
@@ -274,6 +282,11 @@ public class DeviceManager {
 
         File logFile = new File(DIRETORIA_LOGS + houseName + "_" + device + ".csv");
         logFile.createNewFile();
+        try {
+            SpertaServer.saveHashFile(logFile.getPath());
+        } catch (Exception e) {
+            System.err.println("Erro ao criar HMAC do log: " + e.getMessage());
+        }
     }
 
     /**
@@ -286,11 +299,20 @@ public class DeviceManager {
      */
     private void addLogEntry(String houseName, String device, int value) throws IOException {
         String fileName = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
+        if (!SpertaServer.checkIntegrity(fileName)) {
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
+        }
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true))) {
             LocalDateTime agora = LocalDateTime.now();
             DateTimeFormatter formatador = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             writer.write(agora.format(formatador) + ", " + value);
             writer.newLine();
+        }
+        try {
+            SpertaServer.saveHashFile(fileName);
+        } catch (Exception e) {
+            System.err.println("Erro ao atualizar HMAC do log: " + e.getMessage());
         }
     }
 

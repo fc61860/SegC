@@ -34,7 +34,7 @@ public class HouseManager {
         }
 
         try {
-            SpertaServer.saveHashFile(FICHEIRO_CASAS); 
+            SpertaServer.saveHashFile(FICHEIRO_CASAS);
         } catch (Exception e) {
             System.err.println("Erro ao atualizar o HMAC do ficheiro de casas: " + e.getMessage());
             return "NOK";
@@ -51,6 +51,10 @@ public class HouseManager {
      * @throws IOException se ocorrer um erro ao ler o ficheiro de casas
      */
     public String findHouseLine(String houseName) throws IOException {
+        if (!SpertaServer.checkIntegrity(FICHEIRO_CASAS)) {
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
+        }
         try (BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CASAS))) {
             String line;
             while ((line = reader.readLine()) != null) {
