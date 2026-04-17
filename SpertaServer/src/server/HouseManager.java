@@ -1,9 +1,9 @@
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Gere a persistencia e a consulta de informacao associada a casas.
@@ -28,15 +28,14 @@ public class HouseManager {
             return "NOK";
         }
 
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(FICHEIRO_CASAS, true))) {
-            writer.write(houseName + ";" + user + ";;");
-            writer.newLine();
-        }
-
         try {
-            SpertaServer.saveHashFile(FICHEIRO_CASAS);
+            byte[] existing = SpertaServer.readDecrypted(FICHEIRO_CASAS);
+            String existingContent = new String(existing, StandardCharsets.UTF_8);
+            String newLine = houseName + ";" + user + ";;";  
+            byte[] newContent = (existingContent + newLine + "\n").getBytes(StandardCharsets.UTF_8);
+            SpertaServer.writeEncrypted(FICHEIRO_CASAS, newContent);
         } catch (Exception e) {
-            System.err.println("Erro ao atualizar o HMAC do ficheiro de casas: " + e.getMessage());
+            System.err.println("Erro ao cifrar casas.txt: " + e.getMessage());
             return "NOK";
         }
 
@@ -51,20 +50,21 @@ public class HouseManager {
      * @throws IOException se ocorrer um erro ao ler o ficheiro de casas
      */
     public String findHouseLine(String houseName) throws IOException {
-        if (!SpertaServer.checkIntegrity(FICHEIRO_CASAS)) {
-            System.err.println("NOK-INTEGRITY");
-            System.exit(-1);
-        }
-        try (BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CASAS))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = splitHouseLine(line);
-                if (parts[0].equals(houseName)) {
-                    return line;
+        try {
+            byte[] content = SpertaServer.readDecrypted(FICHEIRO_CASAS);
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(new ByteArrayInputStream(content), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] parts = splitHouseLine(line);
+                    if (parts[0].equals(houseName)) {
+                        return line;
+                    }
                 }
             }
+        } catch (Exception e) {
+            throw new IOException("Erro ao ler casas.txt: " + e.getMessage(), e);
         }
-
         return null;
     }
 
