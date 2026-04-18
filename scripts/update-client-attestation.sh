@@ -17,3 +17,6 @@ cp "$jar_path" "$ref_jar_path"
 
 # Guardar o caminho da copia de referencia no ficheiro de attestation
 printf '%s\n' "$ref_jar_path" > "$attestation_file"
+
+# Apagar o .hash para que o servidor recifre na proxima execucao
+rm -f "${attestation_file}.hash"

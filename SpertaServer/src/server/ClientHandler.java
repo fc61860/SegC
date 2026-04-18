@@ -1,7 +1,5 @@
-import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -130,15 +128,18 @@ public class ClientHandler extends Thread {
             outStream.writeLong(nonce);
             outStream.flush();
 
-            // Ler caminho da copia de referencia do JAR
+            // Ler caminho da copia de referencia do JAR (ficheiro cifrado)
             String refJarPath;
-            try (BufferedReader reader = new BufferedReader(new FileReader(FICHEIRO_CLIENTATTESTATION))) {
-                refJarPath = reader.readLine();
-                if (refJarPath == null || refJarPath.trim().isEmpty()) {
-                    sendResponse(outStream, "NOK");
-                    return false;
-                }
-                refJarPath = refJarPath.trim();
+            try {
+                byte[] attBytes = SpertaServer.readDecrypted(SpertaServer.FICHEIRO_CLIENTATTESTATION);
+                refJarPath = new String(attBytes, java.nio.charset.StandardCharsets.UTF_8).trim();
+            } catch (Exception e) {
+                sendResponse(outStream, "NOK-ATTEST");
+                return false;
+            }
+            if (refJarPath.isEmpty()) {
+                sendResponse(outStream, "NOK");
+                return false;
             }
 
             // Ler bytes do JAR de referencia

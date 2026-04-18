@@ -15,3 +15,9 @@ Copy-Item -Path $jarPath -Destination $refJarPath -Force
 
 # Guardar o caminho da copia de referencia no ficheiro de attestation
 Set-Content -Path $attestationFile -Value $refJarPath -Encoding ascii
+
+# Apagar o .hash para que o servidor recifre na proxima execucao
+$hashFile = $attestationFile + '.hash'
+if (Test-Path $hashFile) {
+    Remove-Item $hashFile -Force
+}

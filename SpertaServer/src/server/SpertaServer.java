@@ -26,6 +26,7 @@ public class SpertaServer {
     private static final String FICHEIRO_ESTADOS = "SpertaServer/data/estados.txt";
     private static final String FICHEIRO_CLIENTS_ONLINE = "SpertaServer/data/online_users.txt";
     private static final String DIRETORIA_LOGS = "SpertaServer/data/logs/";
+    static final String FICHEIRO_CLIENTATTESTATION = "SpertaServer/data/client_attestation.txt";
 
     /**
      * Metodo principal. Inicia o servidor na porta indicada nos argumentos ou na
@@ -127,6 +128,15 @@ public class SpertaServer {
             }
             if (new File(FICHEIRO_ESTADOS).createNewFile()) {
                 writeEncrypted(FICHEIRO_ESTADOS, new byte[0]);
+            }
+
+            // Se client_attestation.txt foi escrito pelo script (plaintext sem .hash),
+            // cifra-o automaticamente para que fique protegido.
+            File attFile = new File(FICHEIRO_CLIENTATTESTATION);
+            File attHashFile = new File(FICHEIRO_CLIENTATTESTATION + ".hash");
+            if (attFile.exists() && !attHashFile.exists()) {
+                byte[] plaintext = Files.readAllBytes(attFile.toPath());
+                writeEncrypted(FICHEIRO_CLIENTATTESTATION, plaintext);
             }
 
             File usersOnlineFile = new File(FICHEIRO_CLIENTS_ONLINE);
