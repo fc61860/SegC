@@ -48,7 +48,7 @@ public class SpertaClient {
         // Se usar JCEKS, descomenta:
         // System.setProperty("javax.net.ssl.keyStoreType", "JCEKS");
 
-        ClientSession session = new ClientSession(new AuthHandler(), new CommandHandler(new FileTransferManager()));
+        ClientSession session = new ClientSession(new AuthHandler(), new CommandHandler(new FileTransferManager(), keystorePath, keystorePass));
         session.start(ip, port, user, pass);
     }
 }

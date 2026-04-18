@@ -15,8 +15,6 @@ import java.security.SecureRandom;
  * processamento de comandos do protocolo.
  */
 public class ClientHandler extends Thread {
-    private static final String FICHEIRO_CLIENTATTESTATION = "SpertaServer/data/client_attestation.txt";
-
     private final Socket socket;
     private final UserManager userManager;
     private final HouseManager houseManager;
@@ -159,7 +157,8 @@ public class ClientHandler extends Thread {
             StringBuilder expectedHex = new StringBuilder();
             for (byte b : expectedHashBytes) {
                 String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) expectedHex.append('0');
+                if (hex.length() == 1)
+                    expectedHex.append('0');
                 expectedHex.append(hex);
             }
             String expectedHash = expectedHex.toString().toUpperCase();
@@ -198,7 +197,7 @@ public class ClientHandler extends Thread {
 
         switch (command) {
             case "CREATE":
-                criarCasa(user, outStream, parts);
+                criarCasa(user, inStream, outStream, parts);
                 break;
             case "ADD":
                 adicionarUtilizador(user, outStream, parts);
@@ -222,15 +221,34 @@ public class ClientHandler extends Thread {
 
     /**
      * Trata o comando CREATE, validando o numero de argumentos e delegando a
-     * criacao da casa.
+     * criacao da casa. Apos criacao bem-sucedida, recebe 6 chaves de seccao
+     * cifradas com RSA e guarda-as no servidor.
      */
-    private void criarCasa(String user, ObjectOutputStream outStream, String[] parts) throws IOException {
+    private void criarCasa(String user, ObjectInputStream inStream, ObjectOutputStream outStream, String[] parts)
+            throws IOException, ClassNotFoundException {
         if (!hasExactArgs(parts, 2) || parts[1].contains(";")) {
             sendResponse(outStream, "NOK");
             return;
         }
 
-        sendResponse(outStream, houseManager.criarCasa(user, parts[1]));
+        String hm = parts[1];
+        String resultado = houseManager.criarCasa(user, hm);
+        sendResponse(outStream, resultado);
+
+        if (!"OK".equals(resultado)) {
+            return;
+        }
+
+        // Receber e guardar 6 chaves de seccao cifradas com a chave publica RSA do
+        // owner
+        String[] sections = { "E", "G", "L", "M", "P", "S" };
+        for (String s : sections) {
+            byte[] encryptedKey = (byte[]) inStream.readObject();
+            String keyPath = "SpertaServer/data/key." + hm + "." + s + "." + user;
+            Files.write(new File(keyPath).toPath(), encryptedKey);
+        }
+
+        sendResponse(outStream, "OK");
     }
 
     /**
