@@ -97,7 +97,8 @@ public class LogManager {
         }
         try {
             byte[] data = SpertaServer.readDecrypted(fileName);
-            if (data.length == 0) return null;
+            if (data.length == 0)
+                return null;
             String content = new String(data, StandardCharsets.UTF_8);
             String[] lines = content.split("\\r?\\n");
             for (int i = lines.length - 1; i >= 0; i--) {

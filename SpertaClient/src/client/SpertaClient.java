@@ -11,13 +11,17 @@ public class SpertaClient {
 
     /**
      * Ponto de entrada do cliente Sperta.
-     * Lê argumentos de linha de comandos, processa o endereço do servidor e inicia a ligação.
-     * @param args Argumentos: <serverAddress> <truststore> <password-truststore> <keystore> <password-keystore> <user-id> <password>
+     * Lê argumentos de linha de comandos, processa o endereço do servidor e inicia
+     * a ligação.
+     * 
+     * @param args Argumentos: <serverAddress> <truststore> <password-truststore>
+     *             <keystore> <password-keystore> <user-id> <password>
      */
     public static void main(String[] args) {
         if (args.length != 7) {
             System.out.println("Erro!");
-            System.out.println("Formato exigido: SpertaClient <serverAddress> <truststore> <password-truststore> <keystore> <password-keystore> <user-id> <password>");
+            System.out.println(
+                    "Formato exigido: SpertaClient <serverAddress> <truststore> <password-truststore> <keystore> <password-keystore> <user-id> <password>");
             System.exit(-1);
         }
 
@@ -30,7 +34,7 @@ public class SpertaClient {
         String pass = args[6];
 
         String ip = serverAddress;
-        int port = 22345; 
+        int port = 22345;
 
         if (serverAddress.contains(":")) {
             String[] parts = serverAddress.split(":");
@@ -41,14 +45,15 @@ public class SpertaClient {
         // Verificar a identidade do Servidor
         System.setProperty("javax.net.ssl.trustStore", truststorePath);
         System.setProperty("javax.net.ssl.trustStorePassword", truststorePass);
-        
+
         // Configurar a Keystore do Cliente
         System.setProperty("javax.net.ssl.keyStore", keystorePath);
         System.setProperty("javax.net.ssl.keyStorePassword", keystorePass);
         // Se usar JCEKS, descomenta:
         // System.setProperty("javax.net.ssl.keyStoreType", "JCEKS");
 
-        ClientSession session = new ClientSession(new AuthHandler(), new CommandHandler(new FileTransferManager(), keystorePath, keystorePass));
+        ClientSession session = new ClientSession(new AuthHandler(),
+                new CommandHandler(new FileTransferManager(), keystorePath, keystorePass));
         session.start(ip, port, user, pass);
     }
 }

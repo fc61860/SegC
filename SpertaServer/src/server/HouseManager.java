@@ -31,7 +31,7 @@ public class HouseManager {
         try {
             byte[] existing = SpertaServer.readDecrypted(FICHEIRO_CASAS);
             String existingContent = new String(existing, StandardCharsets.UTF_8);
-            String newLine = houseName + ";" + user + ";;";  
+            String newLine = houseName + ";" + user + ";;";
             byte[] newContent = (existingContent + newLine + "\n").getBytes(StandardCharsets.UTF_8);
             SpertaServer.writeEncrypted(FICHEIRO_CASAS, newContent);
         } catch (Exception e) {

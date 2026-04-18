@@ -1,2 +1,0 @@
-casa1;joao;maria:P,pedro:P;P1, P2, M1
-casa2;joao;;P1

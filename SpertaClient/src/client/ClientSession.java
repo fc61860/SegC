@@ -2,12 +2,11 @@ package SpertaClient.src.client;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.Socket;
+import java.net.ConnectException;
 import java.util.Scanner;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
-import java.net.ConnectException;
 
 /**
  * Coordena a ligacao do cliente ao servidor, incluindo autenticacao e ciclo de
@@ -46,7 +45,7 @@ public class ClientSession {
             // failFast
             clientSocket.startHandshake();
             Scanner sc = new Scanner(System.in);
-            //apartir daqui nao funciona por causa do hash
+            // apartir daqui nao funciona por causa do hash
             if (!authHandler.authenticate(SpertaClient.class, user, pass, sc, outStream, inStream)) {
                 return;
             }

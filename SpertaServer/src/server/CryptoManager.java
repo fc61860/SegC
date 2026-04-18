@@ -32,7 +32,8 @@ public class CryptoManager {
     }
 
     /**
-     * Deriva uma chave AES-128 a partir da password e do salt usando PBKDF2WithHmacSHA256.
+     * Deriva uma chave AES-128 a partir da password e do salt usando
+     * PBKDF2WithHmacSHA256.
      */
     private static SecretKey deriveKey() throws Exception {
         KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH);

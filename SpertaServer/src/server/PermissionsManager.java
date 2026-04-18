@@ -163,7 +163,8 @@ public class PermissionsManager {
             String[] rawLines = content.split("\\r?\\n", -1);
             List<String> lines = new ArrayList<>();
             for (String l : rawLines) {
-                if (!l.isEmpty()) lines.add(l);
+                if (!l.isEmpty())
+                    lines.add(l);
             }
 
             for (int i = 0; i < lines.size(); i++) {

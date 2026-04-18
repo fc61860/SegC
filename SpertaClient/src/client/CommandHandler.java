@@ -164,7 +164,7 @@ public class CommandHandler {
             PublicKey pubKey = loadPublicKey();
 
             // Gerar e enviar chave AES-128 para cada secção, cifrada com RSA
-            String[] sections = {"E", "G", "L", "M", "P", "S"};
+            String[] sections = { "E", "G", "L", "M", "P", "S" };
             for (String s : sections) {
                 KeyGenerator keyGen = KeyGenerator.getInstance("AES");
                 keyGen.init(128);

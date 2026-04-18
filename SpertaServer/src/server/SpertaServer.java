@@ -156,15 +156,15 @@ public class SpertaServer {
      */
     private static String calculateHashFile(String caminhoFicheiro) throws Exception {
         byte[] fileBytes = Files.readAllBytes(Paths.get(caminhoFicheiro));
-        
+
         String secretPassword = CryptoManager.getPassword();
-        
+
         Mac mac = Mac.getInstance("HmacSHA256");
         SecretKeySpec secretKeySpec = new SecretKeySpec(secretPassword.getBytes(), "HmacSHA256");
         mac.init(secretKeySpec);
-        
+
         byte[] hmacBytes = mac.doFinal(fileBytes);
-        
+
         // Converter para Base64 para ser fácil de guardar no ficheiro .hash
         return Base64.getEncoder().encodeToString(hmacBytes);
     }
@@ -206,7 +206,8 @@ public class SpertaServer {
     }
 
     /**
-     * Calcula o HMAC-SHA256 de um array de bytes usando a password secreta do servidor.
+     * Calcula o HMAC-SHA256 de um array de bytes usando a password secreta do
+     * servidor.
      */
     private static String calculateHashFromBytes(byte[] content) throws Exception {
         String secretPassword = CryptoManager.getPassword();
@@ -237,9 +238,11 @@ public class SpertaServer {
      */
     public static byte[] readDecrypted(String path) throws Exception {
         File file = new File(path);
-        if (!file.exists()) return new byte[0];
+        if (!file.exists())
+            return new byte[0];
         byte[] data = Files.readAllBytes(file.toPath());
-        if (data.length == 0) return new byte[0];
+        if (data.length == 0)
+            return new byte[0];
         byte[] plaintext = CryptoManager.decrypt(data);
         File hashFile = new File(path + ".hash");
         if (hashFile.exists()) {
@@ -260,8 +263,10 @@ public class SpertaServer {
         try {
             File file = new File(path);
             File hashFile = new File(path + ".hash");
-            if (!file.exists()) return true;
-            if (!hashFile.exists()) return false;
+            if (!file.exists())
+                return true;
+            if (!hashFile.exists())
+                return false;
             byte[] data = Files.readAllBytes(file.toPath());
             byte[] plaintext = data.length == 0 ? new byte[0] : CryptoManager.decrypt(data);
             String stored = new String(Files.readAllBytes(hashFile.toPath()), StandardCharsets.UTF_8).trim();

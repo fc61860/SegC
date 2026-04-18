@@ -47,7 +47,7 @@ public class UserManager {
             System.exit(-1);
         }
         File file = new File(FICHEIRO_USERS);
-        String[] userData = findUserData(file, user); 
+        String[] userData = findUserData(file, user);
 
         if (userData == null) {
             passwd = (String) inStream.readObject();
@@ -77,7 +77,7 @@ public class UserManager {
 
         while (tentativas < MAX_TENTATIVAS) {
             passwd = (String) inStream.readObject();
-            
+
             String hashCalculado = calculateHashPass(passwd, saltGuardado);
 
             if (hashGuardado.equals(hashCalculado)) {
@@ -229,6 +229,7 @@ public class UserManager {
 
     /**
      * Procura os dados de autenticação de um utilizador.
+     * 
      * @return Um array com [Hash_Guardado, Salt_Guardado], ou null se não existir.
      */
     private String[] findUserData(File file, String user) throws FileNotFoundException {
@@ -236,9 +237,9 @@ public class UserManager {
             try (Scanner sc = new Scanner(file)) {
                 while (sc.hasNextLine()) {
                     // Agora dividimos por 3 partes: user:hash:salt
-                    String[] parts = sc.nextLine().split(":", 3); 
+                    String[] parts = sc.nextLine().split(":", 3);
                     if (parts.length == 3 && parts[0].equals(user)) {
-                        return new String[]{parts[1], parts[2]};
+                        return new String[] { parts[1], parts[2] };
                     }
                 }
             }
@@ -263,7 +264,7 @@ public class UserManager {
         synchronized (userFileLock) {
             try (Scanner sc = new Scanner(file)) {
                 while (sc.hasNextLine()) {
-                    String[] parts = sc.nextLine().split(":", 3); 
+                    String[] parts = sc.nextLine().split(":", 3);
                     if (parts.length == 3 && parts[0].equals(user)) {
                         return parts[1];
                     }
@@ -304,7 +305,7 @@ public class UserManager {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             // Concatena a password e o salt (password || salt)
-            String textoParaHash = password + salt; 
+            String textoParaHash = password + salt;
             byte[] hashBytes = md.digest(textoParaHash.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(hashBytes);
         } catch (Exception e) {
