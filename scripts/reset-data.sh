@@ -12,6 +12,10 @@ rm -f "$data_dir/casas.txt"
 rm -f "$data_dir/estados.txt"
 rm -f "$data_dir/online_users.txt"
 
+# Remove key files and certificates
+find "$data_dir" -maxdepth 1 -name 'key.*' -type f -delete
+find "$data_dir" -maxdepth 1 -name '*.cer' -type f -delete
+
 find "$logs_dir" -maxdepth 1 -type f -delete
 find "$client_data_dir" -maxdepth 1 -type f -delete
 find "$data_dir" -maxdepth 1 -name '*.tmp' -type f -delete

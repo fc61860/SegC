@@ -200,7 +200,7 @@ public class ClientHandler extends Thread {
                 criarCasa(user, inStream, outStream, parts);
                 break;
             case "ADD":
-                adicionarUtilizador(user, outStream, parts);
+                adicionarUtilizador(user, inStream, outStream, parts);
                 break;
             case "RD":
                 registarDispositivo(user, outStream, parts);
@@ -253,17 +253,69 @@ public class ClientHandler extends Thread {
 
     /**
      * Trata o comando ADD e envia ao cliente o resultado da atribuicao de
-     * permissoes.
+     * permissoes. Se for uma permissao de seccao, gere a troca de chaves.
      */
-    private void adicionarUtilizador(String user, ObjectOutputStream outStream, String[] parts)
-            throws IOException {
+    private void adicionarUtilizador(String user, ObjectInputStream inStream, ObjectOutputStream outStream, String[] parts)
+            throws IOException, ClassNotFoundException {
         if (!hasExactArgs(parts, 4)) {
             sendResponse(outStream, "NOK");
             return;
         }
 
-        sendResponse(outStream,
-                permissionsManager.adicionarUtilizador(userManager, houseManager, user, parts[1], parts[2], parts[3]));
+        String targetUser = parts[1];
+        String houseName = parts[2];
+        String permission = parts[3];
+
+        // Validar permissoes basicas
+        String validationResult = permissionsManager.adicionarUtilizador(userManager, houseManager, user, targetUser, houseName, permission);
+        
+        if (!"OK".equals(validationResult)) {
+            sendResponse(outStream, validationResult);
+            return;
+        }
+
+        sendResponse(outStream, "OK");
+
+        // Para permissoes de seccao (ou "all"), enviar chaves cifradas ao owner
+        try {
+            // Determinar quais as secoes a enviar
+            String[] sections = "all".equals(permission) ? new String[]{"E", "G", "L", "M", "P", "S"} : new String[]{permission};
+
+            for (String section : sections) {
+                byte[] encryptedSectionKey = permissionsManager.loadSectionKeyForUser(houseName, section, user);
+                if (encryptedSectionKey == null) {
+                    sendResponse(outStream, "NOKEY");
+                    return;
+                }
+
+                sendResponse(outStream, "SEND-KEY");
+                outStream.writeObject(encryptedSectionKey);
+                outStream.flush();
+
+                // Enviar certificado do target user
+                java.security.cert.Certificate targetCert = permissionsManager.getUserCertificate(userManager, targetUser);
+                if (targetCert == null) {
+                    sendResponse(outStream, "NOUSER");
+                    return;
+                }
+                sendResponse(outStream, "SEND-CERT");
+                byte[] certBytes = targetCert.getEncoded();
+                outStream.writeLong(certBytes.length);
+                outStream.write(certBytes);
+                outStream.flush();
+
+                // Receber chave cifrada com chave publica do target user
+                byte[] encryptedKey = (byte[]) inStream.readObject();
+
+                // Guardar chave cifrada para o target user
+                permissionsManager.saveSectionKeyForUser(houseName, section, targetUser, encryptedKey);
+            }
+
+            sendResponse(outStream, "OK");
+        } catch (Exception e) {
+            System.err.println("Erro na troca de chaves: " + e.getMessage());
+            sendResponse(outStream, "NOK");
+        }
     }
 
     /**

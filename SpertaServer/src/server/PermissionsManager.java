@@ -1,5 +1,8 @@
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.security.cert.Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -46,7 +49,7 @@ public class PermissionsManager {
             return "NOPERM";
         }
 
-        updatePermissions(houseManager, targetUser, houseName, permission);
+        updatePermissions(houseManager, houseName, targetUser, permission);
         return "OK";
     }
 
@@ -92,15 +95,19 @@ public class PermissionsManager {
 
     /**
      * Atualiza a string de permissoes de um utilizador dentro da representacao
-     * persistida da casa.
+     * persistida da casa. Tambem cria os ficheiros de chaves de seccao necessarios
+     * baseado no tipo de permissao.
      *
      * @param permissions string de permissoes atual da casa
      * @param user        utilizador a atualizar
      * @param newPerm     nova permissao a acrescentar ou substituir
+     * @param houseName   nome da casa (usado para criar ficheiros de chaves)
      * @return string de permissoes ja atualizada
      */
-    private String addPermission(String permissions, String user, String newPerm) {
+    private String addPermission(String permissions, String user, String newPerm, String houseName) {
         if (permissions == null || permissions.trim().isEmpty()) {
+            // Criar ficheiros de chaves para este utilizador
+            createSectionKeyFiles(houseName, user, newPerm);
             return user + ":" + newPerm;
         }
 
@@ -118,8 +125,11 @@ public class PermissionsManager {
             if (currentUser.equals(user)) {
                 userFound = true;
                 if (newPerm.equals("all")) {
+                    createSectionKeyFiles(houseName, user, "all");
                     updatedUsers.add(user + ":all");
                 } else if (currentPerms.equals("all")) {
+                    //so a nova
+                    deleteKeyFilesExcept(houseName, user, newPerm);
                     updatedUsers.add(user + ":" + newPerm);
                 } else {
                     boolean exists = false;
@@ -131,6 +141,7 @@ public class PermissionsManager {
                     }
                     if (!exists) {
                         currentPerms = currentPerms.isEmpty() ? newPerm : currentPerms + "|" + newPerm;
+                        createSectionKeyFiles(houseName, user, newPerm);
                     }
                     updatedUsers.add(user + ":" + currentPerms);
                 }
@@ -140,22 +151,53 @@ public class PermissionsManager {
         }
 
         if (!userFound) {
+            createSectionKeyFiles(houseName, user, newPerm);
             updatedUsers.add(user + ":" + newPerm);
         }
         return String.join(",", updatedUsers);
     }
 
     /**
-     * Reescreve o ficheiro de casas substituindo as permissoes do utilizador na
-     * casa indicada.
+     * Cria ficheiros vazios de chaves de seccao baseado no tipo de permissao.
+     * Se a permissao for "all", cria ficheiros para todas as 6 secoes.
+     * Se for uma seccao especifica, cria ficheiro apenas para essa seccao.
+     * Falhas silenciosas se os ficheiros nao puderem ser criados.
+     *
+     * @param houseName  nome da casa
+     * @param user       utilizador
+     * @param permission permissao ("all" ou seccao especifica como "E", "G", etc)
+     */
+    private void createSectionKeyFiles(String houseName, String user, String permission) {
+        try {
+            String[] sections = "all".equals(permission) ? new String[] { "E", "G", "L", "M", "P", "S" }
+                    : new String[] { permission };
+
+            for (String section : sections) {
+                File keyFile = new File("SpertaServer/data/key." + houseName + "." + section + "." + user);
+                if (!keyFile.exists()) {
+                    // Criar ficheiro vazio que sera preenchido com a chave cifrada depois
+                    Files.write(keyFile.toPath(), new byte[0]);
+                }
+            }
+        } catch (Exception e) {
+            // Silenciamente ignorar erros na criacao de ficheiros
+            System.err
+                    .println("Aviso: Nao foi possivel criar ficheiros de chaves para " + user + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Atualiza a string de permissoes de um utilizador dentro da representacao
+     * persistida da casa.
      *
      * @param houseManager   gestor de casas que fornece o ficheiro persistente
-     * @param user           utilizador cujas permissoes vao ser atualizadas
-     * @param houseName      casa a alterar
+     * @param houseName      nome da casa
+     * @param targetUser     utilizador cujas permissoes vao ser atualizadas
      * @param newPermissions nova permissao a aplicar
      * @throws IOException se ocorrer um erro durante a atualizacao do ficheiro
      */
-    private void updatePermissions(HouseManager houseManager, String user, String houseName, String newPermissions)
+    private void updatePermissions(HouseManager houseManager, String houseName, String targetUser,
+            String newPermissions)
             throws IOException {
         try {
             byte[] data = SpertaServer.readDecrypted(houseManager.getCasasFile().getPath());
@@ -171,7 +213,7 @@ public class PermissionsManager {
                 String line = lines.get(i);
                 String[] parts = houseManager.splitHouseLine(line);
                 if (parts[0].equals(houseName)) {
-                    parts[2] = addPermission(parts[2], user, newPermissions);
+                    parts[2] = addPermission(parts[2], targetUser, newPermissions, houseName);
                     lines.set(i, String.join(";", parts));
                     break;
                 }
@@ -182,6 +224,70 @@ public class PermissionsManager {
                     newContent.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             throw new IOException("Erro ao atualizar permissoes: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Carrega a chave de seccao cifrada para um utilizador especifico.
+     *
+     * @param houseName nome da casa
+     * @param section   seccao
+     * @param user      utilizador
+     * @return bytes da chave cifrada ou null se nao existir
+     * @throws Exception se ocorrer erro ao ler o ficheiro
+     */
+    public byte[] loadSectionKeyForUser(String houseName, String section, String user) throws Exception {
+        File keyFile = new File("SpertaServer/data/key." + houseName + "." + section + "." + user);
+        if (!keyFile.exists()) {
+            return null;
+        }
+        return Files.readAllBytes(keyFile.toPath());
+    }
+
+    /**
+     * Guarda a chave de seccao cifrada para um utilizador especifico.
+     *
+     * @param houseName    nome da casa
+     * @param section      seccao
+     * @param user         utilizador
+     * @param encryptedKey chave cifrada
+     * @throws Exception se ocorrer erro ao escrever o ficheiro
+     */
+    public void saveSectionKeyForUser(String houseName, String section, String user, byte[] encryptedKey)
+            throws Exception {
+        File keyFile = new File("SpertaServer/data/key." + houseName + "." + section + "." + user);
+        Files.write(keyFile.toPath(), encryptedKey);
+    }
+
+    /**
+     * Obtem o certificado de um utilizador.
+     *
+     * @param userManager gestor de utilizadores
+     * @param user        utilizador
+     * @return certificado ou null se nao existir
+     * @throws Exception se ocorrer erro ao carregar o certificado
+     */
+    public Certificate getUserCertificate(UserManager userManager, String user) throws Exception {
+        return userManager.loadUserCertificate(user);
+    }
+
+    private static void deleteKeyFilesExcept(String houseName, String user, String keepSection) {
+        String[] sections = { "E", "G", "L", "M", "P", "S" };
+
+        for (String section : sections) {
+            // Skip the section we want to keep
+            if (section.equals(keepSection)) {
+                continue;
+            }
+
+            File keyFile = new File("SpertaServer/data/key." + houseName + "." + section + "." + user);
+
+            if (keyFile.exists()) {
+                boolean deleted = keyFile.delete();
+                if (!deleted) {
+                    System.out.println("Failed to delete: " + keyFile.getName());
+                }
+            }
         }
     }
 }

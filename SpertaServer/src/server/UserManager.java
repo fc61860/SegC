@@ -1,14 +1,18 @@
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.security.MessageDigest;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.nio.charset.StandardCharsets;
@@ -311,5 +315,36 @@ public class UserManager {
         } catch (Exception e) {
             throw new RuntimeException("Erro ao calcular hash da password", e);
         }
+    }
+
+    /**
+     * Carrega o certificado de um utilizador do ficheiro .cer correspondente.
+     *
+     * @param user username do utilizador
+     * @return certificado do utilizador ou null se nao existir
+     * @throws Exception se ocorrer um erro ao ler o certificado
+     */
+    public Certificate loadUserCertificate(String user) throws Exception {
+        File certFile = new File("SpertaServer/data/" + user + ".cer");
+        if (!certFile.exists()) {
+            return null;
+        }
+
+        try (FileInputStream fis = new FileInputStream(certFile)) {
+            CertificateFactory cf = CertificateFactory.getInstance("X.509");
+            return cf.generateCertificate(fis);
+        }
+    }
+
+    /**
+     * Obtem a chave publica de um utilizador a partir do seu certificado.
+     *
+     * @param user username do utilizador
+     * @return chave publica do utilizador ou null se nao existir certificado
+     * @throws Exception se ocorrer um erro ao carregar o certificado
+     */
+    public PublicKey getUserPublicKey(String user) throws Exception {
+        Certificate cert = loadUserCertificate(user);
+        return cert != null ? cert.getPublicKey() : null;
     }
 }
