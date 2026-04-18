@@ -2,7 +2,8 @@
 set -euo pipefail
 
 jar_path="SpertaClient/bin/SpertaClient.jar"
-attestation_file="SpertaServer/data/client_size.txt"
+ref_jar_path="SpertaServer/data/SpertaClient.jar"
+attestation_file="SpertaServer/data/client_attestation.txt"
 
 if [ ! -f "$jar_path" ]; then
 	echo "O ficheiro SpertaClient/bin/SpertaClient.jar nao existe. Compile primeiro o cliente." >&2
@@ -11,9 +12,11 @@ fi
 
 mkdir -p "SpertaServer/data"
 
-if [ ! -f "$attestation_file" ]; then
-	touch "$attestation_file"
-fi
+# Copiar o JAR para a pasta do servidor como copia de referencia
+cp "$jar_path" "$ref_jar_path"
 
-jar_size=$(wc -c < "$jar_path" | tr -d '[:space:]')
-printf 'SpertaClient.jar:%s\n' "$jar_size" > "$attestation_file"
+# Guardar o caminho da copia de referencia no ficheiro de attestation
+printf '%s\n' "$ref_jar_path" > "$attestation_file"
+
+# Apagar o .hash para que o servidor recifre na proxima execucao
+rm -f "${attestation_file}.hash"

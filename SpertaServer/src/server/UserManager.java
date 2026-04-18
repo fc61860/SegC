@@ -42,6 +42,10 @@ public class UserManager {
             throws IOException, ClassNotFoundException {
         int tentativas = 0;
         String passwd;
+        if (!SpertaServer.checkIntegrity(FICHEIRO_USERS)) {
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
+        }
         File file = new File(FICHEIRO_USERS);
         String[] userData = findUserData(file, user); 
 
@@ -97,6 +101,10 @@ public class UserManager {
      *                               disponivel
      */
     public boolean userExists(String user) throws FileNotFoundException {
+        if (!SpertaServer.checkIntegrity(FICHEIRO_USERS)) {
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
+        }
         File file = new File(FICHEIRO_USERS);
         return findUserPassword(file, user) != null;
     }

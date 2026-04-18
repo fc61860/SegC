@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
@@ -25,6 +26,7 @@ public class SpertaServer {
     private static final String FICHEIRO_ESTADOS = "SpertaServer/data/estados.txt";
     private static final String FICHEIRO_CLIENTS_ONLINE = "SpertaServer/data/online_users.txt";
     private static final String DIRETORIA_LOGS = "SpertaServer/data/logs/";
+    static final String FICHEIRO_CLIENTATTESTATION = "SpertaServer/data/client_attestation.txt";
 
     /**
      * Metodo principal. Inicia o servidor na porta indicada nos argumentos ou na
@@ -74,9 +76,9 @@ public class SpertaServer {
     public void startServer(int port) {
         inicializarEstrutura();
         // Verificar Integridade Logo no Arranque
-        if (!checkIntegrity(FICHEIRO_CASAS) ||
+        if (!checkIntegrityEncrypted(FICHEIRO_CASAS) ||
                 !checkIntegrity(FICHEIRO_USERS) ||
-                !checkIntegrity(FICHEIRO_ESTADOS)) {
+                !checkIntegrityEncrypted(FICHEIRO_ESTADOS)) {
 
             System.err.println("NOK-INTEGRITY");
             System.exit(-1);
@@ -122,10 +124,19 @@ public class SpertaServer {
                 saveHashFile(FICHEIRO_USERS);
             }
             if (new File(FICHEIRO_CASAS).createNewFile()) {
-                saveHashFile(FICHEIRO_CASAS);
+                writeEncrypted(FICHEIRO_CASAS, new byte[0]);
             }
             if (new File(FICHEIRO_ESTADOS).createNewFile()) {
-                saveHashFile(FICHEIRO_ESTADOS);
+                writeEncrypted(FICHEIRO_ESTADOS, new byte[0]);
+            }
+
+            // Se client_attestation.txt foi escrito pelo script (plaintext sem .hash),
+            // cifra-o automaticamente para que fique protegido.
+            File attFile = new File(FICHEIRO_CLIENTATTESTATION);
+            File attHashFile = new File(FICHEIRO_CLIENTATTESTATION + ".hash");
+            if (attFile.exists() && !attHashFile.exists()) {
+                byte[] plaintext = Files.readAllBytes(attFile.toPath());
+                writeEncrypted(FICHEIRO_CLIENTATTESTATION, plaintext);
             }
 
             File usersOnlineFile = new File(FICHEIRO_CLIENTS_ONLINE);
@@ -189,6 +200,72 @@ public class SpertaServer {
 
             return hashAtual.equals(hashGuardado);
 
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Calcula o HMAC-SHA256 de um array de bytes usando a password secreta do servidor.
+     */
+    private static String calculateHashFromBytes(byte[] content) throws Exception {
+        String secretPassword = CryptoManager.getPassword();
+        Mac mac = Mac.getInstance("HmacSHA256");
+        SecretKeySpec secretKeySpec = new SecretKeySpec(secretPassword.getBytes(), "HmacSHA256");
+        mac.init(secretKeySpec);
+        return Base64.getEncoder().encodeToString(mac.doFinal(content));
+    }
+
+    /**
+     * Cifra um array de bytes (plaintext) e guarda no ficheiro indicado,
+     * guardando também o HMAC do plaintext no ficheiro .hash correspondente.
+     * Usado para todos os ficheiros cifrados (casas.txt, estados.txt, logs).
+     */
+    public static void writeEncrypted(String path, byte[] plaintext) throws Exception {
+        String hash = calculateHashFromBytes(plaintext);
+        byte[] encrypted = CryptoManager.encrypt(plaintext);
+        Files.write(Paths.get(path), encrypted);
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(path + ".hash"))) {
+            bw.write(hash);
+        }
+    }
+
+    /**
+     * Lê o ficheiro cifrado indicado, decifra-o, verifica o HMAC no plaintext
+     * e devolve o conteúdo em claro. Termina o servidor com NOK-INTEGRITY se
+     * a verificação falhar.
+     */
+    public static byte[] readDecrypted(String path) throws Exception {
+        File file = new File(path);
+        if (!file.exists()) return new byte[0];
+        byte[] data = Files.readAllBytes(file.toPath());
+        if (data.length == 0) return new byte[0];
+        byte[] plaintext = CryptoManager.decrypt(data);
+        File hashFile = new File(path + ".hash");
+        if (hashFile.exists()) {
+            String stored = new String(Files.readAllBytes(hashFile.toPath()), StandardCharsets.UTF_8).trim();
+            if (!calculateHashFromBytes(plaintext).equals(stored)) {
+                System.err.println("NOK-INTEGRITY");
+                System.exit(-1);
+            }
+        }
+        return plaintext;
+    }
+
+    /**
+     * Verifica a integridade de um ficheiro cifrado sem terminar o servidor.
+     * Retorna false se a verificação falhar ou se o ficheiro .hash não existir.
+     */
+    public static boolean checkIntegrityEncrypted(String path) {
+        try {
+            File file = new File(path);
+            File hashFile = new File(path + ".hash");
+            if (!file.exists()) return true;
+            if (!hashFile.exists()) return false;
+            byte[] data = Files.readAllBytes(file.toPath());
+            byte[] plaintext = data.length == 0 ? new byte[0] : CryptoManager.decrypt(data);
+            String stored = new String(Files.readAllBytes(hashFile.toPath()), StandardCharsets.UTF_8).trim();
+            return calculateHashFromBytes(plaintext).equals(stored);
         } catch (Exception e) {
             return false;
         }

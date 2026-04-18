@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.util.Scanner;
 import java.security.cert.Certificate;
@@ -53,16 +54,22 @@ public class AuthHandler {
     }
 
     /**
-     * Envia ao servidor o tamanho do artefacto carregado pelo cliente para efeitos
-     * de attestation.
+     * Envia ao servidor o hash SHA-256(nonce_bytes || bytes_JAR) para atestacao
+     * remota com protecao anti-replay.
      */
     private boolean performAttestation(Class<?> codeSourceClass, ObjectOutputStream outStream,
             ObjectInputStream inStream) throws Exception {
-        
+
+        // Receber nonce do servidor
+        long nonce = inStream.readLong();
+        byte[] nonceBytes = ByteBuffer.allocate(8).putLong(nonce).array();
+
+        // Localizar o proprio JAR
         File clientFile = new File(codeSourceClass.getProtectionDomain().getCodeSource().getLocation().toURI());
-        
-        // Calcular o Hash SHA-256
+
+        // Calcular SHA-256(nonce_bytes || bytes_JAR)
         MessageDigest md = MessageDigest.getInstance("SHA-256");
+        md.update(nonceBytes);
         try (FileInputStream fis = new FileInputStream(clientFile)) {
             byte[] buffer = new byte[1024];
             int bytesRead;
@@ -70,23 +77,23 @@ public class AuthHandler {
                 md.update(buffer, 0, bytesRead);
             }
         }
-        
-        // Converter o Hash para String
+
+        // Converter para hash para string
         StringBuilder hexString = new StringBuilder();
         for (byte b : md.digest()) {
             String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) hexString.append('0');
+            if (hex.length() == 1)
+                hexString.append('0');
             hexString.append(hex);
         }
         String myHash = hexString.toString().toUpperCase();
 
-        outStream.writeObject(clientFile.getName());
-        outStream.flush();
+        // Enviar hash ao servidor
         outStream.writeObject(myHash);
         outStream.flush();
 
         String answer = (String) inStream.readObject();
-        return !answer.equals("NOK");
+        return !answer.equals("NOK-ATTEST");
     }
 
     /**
@@ -119,7 +126,7 @@ public class AuthHandler {
 
             if (respostaAuth.equals("SEND-CERT")) {
                 sendCertificate(user, outStream);// Envia o certificado para o server
-                
+
                 respostaAuth = (String) inStream.readObject();
             }
 
@@ -145,13 +152,14 @@ public class AuthHandler {
     }
 
     /**
-     * Extrai o certificado público da Keystore do Cliente e envia os bytes para o Servidor.
+     * Extrai o certificado público da Keystore do Cliente e envia os bytes para o
+     * Servidor.
      */
     private void sendCertificate(String user, ObjectOutputStream outStream) throws Exception {
         String keystorePath = System.getProperty("javax.net.ssl.keyStore");
         String keystorePass = System.getProperty("javax.net.ssl.keyStorePassword");
-        
-        KeyStore ks = KeyStore.getInstance("JKS"); 
+
+        KeyStore ks = KeyStore.getInstance("JKS");
         try (FileInputStream fis = new FileInputStream(keystorePath)) {
             ks.load(fis, keystorePass.toCharArray());
         }
@@ -163,7 +171,7 @@ public class AuthHandler {
         }
 
         byte[] certBytes = cert.getEncoded();
-        
+
         outStream.writeLong(certBytes.length);
         outStream.flush();
         outStream.write(certBytes);

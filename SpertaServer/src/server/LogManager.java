@@ -1,11 +1,10 @@
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -96,15 +95,20 @@ public class LogManager {
         if (!file.exists()) {
             return null;
         }
-
-        String lastLine = null;
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                lastLine = line;
+        try {
+            byte[] data = SpertaServer.readDecrypted(fileName);
+            if (data.length == 0) return null;
+            String content = new String(data, StandardCharsets.UTF_8);
+            String[] lines = content.split("\\r?\\n");
+            for (int i = lines.length - 1; i >= 0; i--) {
+                if (!lines[i].trim().isEmpty()) {
+                    return lines[i].trim();
+                }
             }
+            return null;
+        } catch (Exception e) {
+            throw new IOException("Erro ao ler log: " + e.getMessage(), e);
         }
-        return lastLine;
     }
 
     /**
@@ -205,7 +209,8 @@ public class LogManager {
      * @throws IOException se ocorrer um erro ao abrir ou transmitir o log
      */
     private void sendLog(String houseName, String device, ObjectOutputStream outStream) throws IOException {
-        File log = new File(DIRETORIA_LOGS + houseName + "_" + device + ".csv");
+        String logPath = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
+        File log = new File(logPath);
 
         if (!log.exists() || log.length() == 0) {
             outStream.writeObject("NODATA");
@@ -213,19 +218,21 @@ public class LogManager {
             return;
         }
 
-        outStream.writeObject("OK");
-        outStream.flush();
-
-        try (FileInputStream fileIn = new FileInputStream(log)) {
-            outStream.writeLong(log.length());
-            outStream.flush();
-
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            while ((bytesRead = fileIn.read(buffer)) > 0) {
-                outStream.write(buffer, 0, bytesRead);
+        try {
+            byte[] plaintext = SpertaServer.readDecrypted(logPath);
+            if (plaintext.length == 0) {
+                outStream.writeObject("NODATA");
+                outStream.flush();
+                return;
             }
+            outStream.writeObject("OK");
             outStream.flush();
+            outStream.writeLong(plaintext.length);
+            outStream.flush();
+            outStream.write(plaintext);
+            outStream.flush();
+        } catch (Exception e) {
+            throw new IOException("Erro ao enviar log: " + e.getMessage(), e);
         }
     }
 }

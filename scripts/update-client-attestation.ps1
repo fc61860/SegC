@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 
 $jarPath = 'SpertaClient/bin/SpertaClient.jar'
-$attestationFile = 'SpertaServer/data/client_size.txt'
+$refJarPath = 'SpertaServer/data/SpertaClient.jar'
+$attestationFile = 'SpertaServer/data/client_attestation.txt'
 
 if (-not (Test-Path $jarPath)) {
     Write-Error 'O ficheiro SpertaClient/bin/SpertaClient.jar nao existe. Compile primeiro o cliente.'
@@ -9,9 +10,14 @@ if (-not (Test-Path $jarPath)) {
 
 $null = New-Item -ItemType Directory -Path 'SpertaServer/data' -Force
 
-if (-not (Test-Path $attestationFile)) {
-    New-Item -ItemType File -Path $attestationFile -Force | Out-Null
-}
+# Copiar o JAR para a pasta do servidor como copia de referencia
+Copy-Item -Path $jarPath -Destination $refJarPath -Force
 
-$jarHash = (Get-FileHash -Path $jarPath -Algorithm SHA256).Hash
-Set-Content -Path $attestationFile -Value "SpertaClient.jar:$jarHash" -Encoding ascii
+# Guardar o caminho da copia de referencia no ficheiro de attestation
+Set-Content -Path $attestationFile -Value $refJarPath -Encoding ascii
+
+# Apagar o .hash para que o servidor recifre na proxima execucao
+$hashFile = $attestationFile + '.hash'
+if (Test-Path $hashFile) {
+    Remove-Item $hashFile -Force
+}

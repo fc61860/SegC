@@ -1,9 +1,5 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -161,48 +157,30 @@ public class PermissionsManager {
      */
     private void updatePermissions(HouseManager houseManager, String user, String houseName, String newPermissions)
             throws IOException {
-        File inputFile = houseManager.getCasasFile();
-        File tempFile = File.createTempFile("permissions_", ".tmp", inputFile.getParentFile());
+        try {
+            byte[] data = SpertaServer.readDecrypted(houseManager.getCasasFile().getPath());
+            String content = new String(data, StandardCharsets.UTF_8);
+            String[] rawLines = content.split("\\r?\\n", -1);
+            List<String> lines = new ArrayList<>();
+            for (String l : rawLines) {
+                if (!l.isEmpty()) lines.add(l);
+            }
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
-                BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i);
                 String[] parts = houseManager.splitHouseLine(line);
                 if (parts[0].equals(houseName)) {
                     parts[2] = addPermission(parts[2], user, newPermissions);
-                    line = String.join(";", parts);
+                    lines.set(i, String.join(";", parts));
+                    break;
                 }
-
-                writer.write(line);
-                writer.newLine();
             }
-        }
 
-        replaceFile(tempFile, inputFile);
-    }
-
-    /**
-     * Substitui o ficheiro de destino por um ficheiro temporario previamente
-     * escrito e atualiza a sua assinatura HMAC.
-     *
-     * @param source ficheiro temporario com o novo conteudo
-     * @param target ficheiro final a substituir
-     * @throws IOException se a substituicao falhar
-     */
-    private void replaceFile(File source, File target) throws IOException {
-        if (target.exists() && !target.delete()) {
-            throw new IOException("Nao foi possivel substituir o ficheiro " + target.getName());
-        }
-
-        if (!source.renameTo(target)) {
-            throw new IOException("Nao foi possivel renomear o ficheiro temporario para " + target.getName());
-        }
-
-        try {
-            SpertaServer.saveHashFile(target.getPath());
+            String newContent = String.join("\n", lines) + "\n";
+            SpertaServer.writeEncrypted(houseManager.getCasasFile().getPath(),
+                    newContent.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
-            System.err.println("Erro ao atualizar o HMAC de " + target.getName() + ": " + e.getMessage());
+            throw new IOException("Erro ao atualizar permissoes: " + e.getMessage(), e);
         }
     }
 }
