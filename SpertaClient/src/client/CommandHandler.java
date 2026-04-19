@@ -15,6 +15,8 @@ public class CommandHandler {
     private final FileTransferManager fileTransferManager;
     private final String keystorePath;
     private final String keystorePass;
+    private final String truststorePath;
+    private final String truststorePass;
 
     /**
      * Cria um processador de comandos com suporte a transferencia de ficheiros.
@@ -23,11 +25,16 @@ public class CommandHandler {
      *                            recebidos do servidor
      * @param keystorePath        caminho para a keystore do cliente (PKCS12)
      * @param keystorePass        password da keystore
+     * @param truststorePath      caminho para a truststore do cliente (JKS)
+     * @param truststorePass      password da truststore
      */
-    public CommandHandler(FileTransferManager fileTransferManager, String keystorePath, String keystorePass) {
+    public CommandHandler(FileTransferManager fileTransferManager, String keystorePath, String keystorePass,
+            String truststorePath, String truststorePass) {
         this.fileTransferManager = fileTransferManager;
         this.keystorePath = keystorePath;
         this.keystorePass = keystorePass;
+        this.truststorePath = truststorePath;
+        this.truststorePass = truststorePass;
     }
 
     /**
@@ -178,8 +185,11 @@ public class CommandHandler {
     }
 
     /**
-     * Trata o comando ADD, incluindo a troca de chaves de seccao quando necessario.
-     * Suporta permissoes de seccao unica e "all" (6 seccoes).
+     * Trata o comando ADD:
+     * 1. Servidor valida e responde OK ou erro.
+     * 2. Cliente verifica truststore -> envia NEED-CERT ou HAVE-CERT.
+     * 3. Se NEED-CERT: recebe certificado do servidor e guarda na truststore.
+     * 4. Loop por seccoes: recebe chave cifrada, re-cifra com pub key do target, envia.
      */
     private void handleAddCommand(String[] parts, String input, ObjectOutputStream outStream,
             ObjectInputStream inStream) {
@@ -188,45 +198,53 @@ public class CommandHandler {
             return;
         }
 
+        String targetUser = parts[1];
+
         try {
             sendCommand(input, outStream);
 
-            // Primeiro sinal: "SEND-KEY" (troca de chave) ou codigo de erro
+            // Passo 1: receber resultado da validacao de permissoes
             String response = (String) inStream.readObject();
-
-            if (!"SEND-KEY".equals(response)) {
+            if (!"OK".equals(response)) {
                 System.out.println("Server: " + response);
                 return;
             }
 
-            // Loop para cada seccao (1 seccao especifica ou 6 para "all")
+            // Passo 2: verificar se temos o certificado do target na truststore
+            boolean hasCert = CryptoUtils.hasCertInTruststore(truststorePath, truststorePass, targetUser);
+            if (!hasCert) {
+                outStream.writeObject("NEED-CERT");
+                outStream.flush();
+
+                // Passo 3: receber certificado e guardar na truststore
+                Object certResponse = inStream.readObject();
+                if (certResponse instanceof String) {
+                    System.out.println("Server: " + certResponse);
+                    return;
+                }
+                byte[] certBytes = (byte[]) certResponse;
+                CertificateFactory cf = CertificateFactory.getInstance("X.509");
+                Certificate cert = cf.generateCertificate(new ByteArrayInputStream(certBytes));
+                CryptoUtils.saveCertToTruststore(truststorePath, truststorePass, targetUser, cert);
+            } else {
+                outStream.writeObject("HAVE-CERT");
+                outStream.flush();
+            }
+
+            // Passo 4: loop de troca de chaves de seccao
+            response = (String) inStream.readObject();
             while ("SEND-KEY".equals(response)) {
-                // Receber chave de seccao cifrada com chave publica do owner
                 byte[] encryptedSectionKey = (byte[]) inStream.readObject();
                 byte[] sectionKey = CryptoUtils.decryptWithPrivateKey(
                         encryptedSectionKey, CryptoUtils.loadPrivateKey(keystorePath, keystorePass));
 
-                // Receber marcador de certificado
-                response = (String) inStream.readObject();
-                if (!"SEND-CERT".equals(response)) {
-                    System.out.println("Erro: esperado SEND-CERT, recebido: " + response);
-                    return;
-                }
-
-                // Receber certificado do target user como byte[] serializado
-                byte[] certBytes = (byte[]) inStream.readObject();
-                CertificateFactory cf = CertificateFactory.getInstance("X.509");
-                Certificate targetCert = cf.generateCertificate(new ByteArrayInputStream(certBytes));
-                PublicKey targetPubKey = targetCert.getPublicKey();
-
-                // Cifrar chave de seccao com chave publica do target user
+                PublicKey targetPubKey = CryptoUtils.loadPublicKeyFromTruststore(
+                        truststorePath, truststorePass, targetUser);
                 byte[] encryptedKey = CryptoUtils.encryptWithPublicKey(sectionKey, targetPubKey);
 
-                // Enviar chave cifrada de volta ao servidor
                 outStream.writeObject(encryptedKey);
                 outStream.flush();
 
-                // Ler proximo sinal: "SEND-KEY" para proxima seccao ou "OK" final (ou erro)
                 response = (String) inStream.readObject();
             }
 
