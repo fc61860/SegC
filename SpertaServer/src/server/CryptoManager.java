@@ -31,7 +31,8 @@ public class CryptoManager {
     }
 
     /**
-     * Deriva uma chave AES-128 a partir da password e do salt usando PBKDF2WithHmacSHA256.
+     * Deriva uma chave AES-128 a partir da password e do salt usando
+     * PBKDF2WithHmacSHA256.
      */
     private static SecretKey deriveKey() throws Exception {
         KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH);
@@ -58,6 +59,11 @@ public class CryptoManager {
         System.arraycopy(iv, 0, result, 0, IV_LENGTH);
         System.arraycopy(ciphertext, 0, result, IV_LENGTH, ciphertext.length);
         return result;
+        // SecretKey aesKey = generateRandomKey(); // NOT deriveKey()
+
+        // byte[] encryptedFile = encryptWithAES(plaintext, aesKey);
+
+        // byte[] encryptedKey = encryptWithPublicKey(aesKey.getEncoded(), clientPublicKey);
     }
 
     /**

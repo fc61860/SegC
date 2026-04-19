@@ -16,14 +16,14 @@ public class FileTransferManager {
      * @param inStream          stream de entrada do servidor
      * @param nomeFicheiroLocal nome do ficheiro local a guardar
      */
-    public void processFile(ObjectInputStream inStream, String nomeFicheiroLocal) {
+    public File processFile(ObjectInputStream inStream, String nomeFicheiroLocal) {
         try {
             ensureDataDirectory();
             String status = (String) inStream.readObject();
 
             if (!status.equals("OK")) {
                 System.out.println(status);
-                return;
+                return null;
             }
 
             long fileSize = inStream.readLong();
@@ -43,8 +43,10 @@ public class FileTransferManager {
             }
 
             System.out.println("Guardado como: " + nomeFicheiroLocal);
+            return new File(DIRETORIA_DATA + nomeFicheiroLocal);
         } catch (Exception e) {
             System.out.println("Erro ao tentar receber o ficheiro.");
+            return null;
         }
     }
 
@@ -57,5 +59,40 @@ public class FileTransferManager {
         if (!dataDir.exists()) {
             dataDir.mkdirs();
         }
+    }
+
+    public File processKeyFile(ObjectInputStream inStream, String nomeFicheiroLocal) {
+        try {
+            String keyStatus = (String) inStream.readObject();
+
+            if (!keyStatus.equals("OK_KEY")) {
+                System.out.println(keyStatus);
+                return null;
+            }
+
+            long keySize = inStream.readLong();
+            System.out.println("Server: " + keyStatus + ", " + keySize + " bytes.");
+
+            String keyFileName = "key_" + nomeFicheiroLocal;
+
+            try (FileOutputStream keyOut = new FileOutputStream(DIRETORIA_DATA + keyFileName)) {
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                long totalLido = 0;
+
+                while (totalLido < keySize && (bytesRead = inStream.read(
+                        buffer, 0, (int) Math.min(buffer.length, keySize - totalLido))) != -1) {
+                    keyOut.write(buffer, 0, bytesRead);
+                    totalLido += bytesRead;
+                }
+            }
+
+            System.out.println("Key guardada como: " + keyFileName);
+            return new File(DIRETORIA_DATA + keyFileName);
+        } catch (Exception e) {
+            System.out.println("Erro ao tentar receber o ficheiro.");
+            return null;
+        }
+
     }
 }

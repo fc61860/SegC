@@ -5,8 +5,12 @@ import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
+import java.util.Arrays;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 
 /**
  * Utilitarios de criptografia para o cliente Sperta.
@@ -83,4 +87,21 @@ public class CryptoUtils {
         String alias = ks.aliases().nextElement();
         return (PrivateKey) ks.getKey(alias, keystorePass.toCharArray());
     }
+
+    public static byte[] decryptFile(byte[] encryptedData, SecretKey key) throws Exception {
+        // 1. Extract IV (first 16 bytes)
+        byte[] iv = Arrays.copyOfRange(encryptedData, 0, 16);
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        // 2. Extract ciphertext
+        byte[] ciphertext = Arrays.copyOfRange(encryptedData, 16, encryptedData.length);
+
+        // 3. Setup cipher
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.DECRYPT_MODE, key, ivSpec);
+
+        // 4. Decrypt
+        return cipher.doFinal(ciphertext);
+    }
+
 }

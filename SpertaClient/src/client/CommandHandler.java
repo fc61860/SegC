@@ -1,11 +1,19 @@
 package SpertaClient.src.client;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Processa comandos introduzidos pelo utilizador e trata a comunicacao com o
@@ -131,9 +139,31 @@ public class CommandHandler {
         try {
             sendCommand(input, outStream);
             String nomeFicheiro = "client_log_" + parts[1] + "_" + parts[2] + ".csv";
-            fileTransferManager.processFile(inStream, nomeFicheiro);
+            File logFile = fileTransferManager.processFile(inStream, "temp_log.csv");
+            File keyFile = fileTransferManager.processKeyFile(inStream, "temp_key.bin");
+
+            byte[] encryptedFile = Files.readAllBytes(logFile.toPath());
+            byte[] encryptedKey = Files.readAllBytes(keyFile.toPath());
+
+            // apagar os ficheiros
+            try {
+                Files.deleteIfExists(logFile.toPath());
+                Files.deleteIfExists(keyFile.toPath());
+            } catch (IOException e) {
+                System.out.println("Warning: could not delete temp files: " + e.getMessage());
+            }
+            System.out.println(encryptedFile.length);
+            // nao sei se devia tar aqui
+            PrivateKey privateKey = CryptoUtils.loadPrivateKey(keystorePath, keystorePass);
+            byte[] aesKeyBytes = CryptoUtils.decryptWithPrivateKey(encryptedKey, privateKey);
+            SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
+            System.out.println(aesKeyBytes.length);
+            byte[] plaintext = CryptoUtils.decryptFile(encryptedFile, aesKey);
+
+            Files.write(Paths.get("decrypted_" + nomeFicheiro), plaintext);
         } catch (Exception e) {
             System.out.println("Erro ao comunicar com o servidor.");
+            e.printStackTrace();
         }
     }
 
@@ -151,7 +181,8 @@ public class CommandHandler {
         try {
             sendCommand(input, outStream);
             String response = (String) inStream.readObject();
-            System.out.println("Server: " + response);
+            // so um dos prints e fica o final
+            // System.out.println("Server: " + response);
 
             if (!"OK".equals(response)) {
                 return;
@@ -161,7 +192,7 @@ public class CommandHandler {
             PublicKey pubKey = CryptoUtils.loadPublicKey(keystorePath, keystorePass);
 
             // Gerar e enviar chave AES-128 para cada seccao, cifrada com RSA
-            String[] sections = {"E", "G", "L", "M", "P", "S"};
+            String[] sections = { "E", "G", "L", "M", "P", "S" };
             for (String s : sections) {
                 byte[] sectionKeyBytes = CryptoUtils.generateSectionKey();
                 byte[] encryptedKey = CryptoUtils.encryptWithPublicKey(sectionKeyBytes, pubKey);

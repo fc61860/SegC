@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -79,7 +80,7 @@ public class LogManager {
             return;
         }
 
-        sendLog(houseName, device, outStream);
+        sendLog(houseName, device, user, outStream);
     }
 
     /**
@@ -209,7 +210,7 @@ public class LogManager {
      * @param outStream stream de saida para enviar o ficheiro
      * @throws IOException se ocorrer um erro ao abrir ou transmitir o log
      */
-    private void sendLog(String houseName, String device, ObjectOutputStream outStream) throws IOException {
+    private void sendLog(String houseName, String device, String user, ObjectOutputStream outStream) throws IOException {
         String logPath = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
         File log = new File(logPath);
 
@@ -220,20 +221,49 @@ public class LogManager {
         }
 
         try {
-            byte[] plaintext = SpertaServer.readDecrypted(logPath);
-            if (plaintext.length == 0) {
+            byte[] encrypted = Files.readAllBytes(log.toPath());
+
+            if (encrypted.length == 0) {
                 outStream.writeObject("NODATA");
                 outStream.flush();
                 return;
             }
+
             outStream.writeObject("OK");
             outStream.flush();
-            outStream.writeLong(plaintext.length);
+
+            outStream.writeLong(encrypted.length);
             outStream.flush();
-            outStream.write(plaintext);
+
+            outStream.write(encrypted);
             outStream.flush();
+
+            sendSectionKeyFile(houseName, device.charAt(0), user, outStream);
         } catch (Exception e) {
             throw new IOException("Erro ao enviar log: " + e.getMessage(), e);
         }
+    }
+
+    private void sendSectionKeyFile(String houseName, char section, String user, ObjectOutputStream outStream)
+            throws IOException {
+        String keyFilePath = "SpertaServer/data/key." + houseName + "." + section + "." + user;
+        File keyFile = new File(keyFilePath);
+
+        if (!keyFile.exists() || keyFile.length() == 0) {
+            outStream.writeObject("NODATA_KEY");
+            outStream.flush();
+            return;
+        }
+        byte[] keyBytes = Files.readAllBytes(keyFile.toPath());
+
+        outStream.writeObject("OK_KEY");
+        outStream.flush();
+
+        outStream.writeLong(keyBytes.length);
+        outStream.flush();
+
+        outStream.write(keyBytes);
+        outStream.flush();
+
     }
 }
