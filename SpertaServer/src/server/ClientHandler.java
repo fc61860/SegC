@@ -252,11 +252,14 @@ public class ClientHandler extends Thread {
     }
 
     /**
-     * Trata o comando ADD e envia ao cliente o resultado da atribuicao de
-     * permissoes. Se for uma permissao de seccao, gere a troca de chaves.
+     * Trata o comando ADD:
+     * 1. Valida permissoes -> envia OK ou erro.
+     * 2. Aguarda NEED-CERT ou HAVE-CERT do cliente.
+     * 3. Se NEED-CERT: envia o certificado do target user.
+     * 4. Loop por seccoes: envia chave cifrada, recebe chave re-cifrada, guarda.
      */
-    private void adicionarUtilizador(String user, ObjectInputStream inStream, ObjectOutputStream outStream, String[] parts)
-            throws IOException, ClassNotFoundException {
+    private void adicionarUtilizador(String user, ObjectInputStream inStream, ObjectOutputStream outStream,
+            String[] parts) throws IOException, ClassNotFoundException {
         if (!hasExactArgs(parts, 4)) {
             sendResponse(outStream, "NOK");
             return;
@@ -266,30 +269,40 @@ public class ClientHandler extends Thread {
         String houseName = parts[2];
         String permission = parts[3];
 
-        // Validar permissoes basicas
-        String validationResult = permissionsManager.adicionarUtilizador(userManager, houseManager, user, targetUser, houseName, permission);
-
+        // Passo 1: validar permissoes
+        String validationResult = permissionsManager.adicionarUtilizador(userManager, houseManager, user, targetUser,
+                houseName, permission);
         if (!"OK".equals(validationResult)) {
             sendResponse(outStream, validationResult);
             return;
         }
+        sendResponse(outStream, "OK");
 
-        // Nao enviar "OK" antes da troca de chaves — o primeiro sinal ao cliente
-        // e "SEND-KEY" (ou erro). Isto evita dessincronizacao do protocolo.
-        try {
-            // Determinar quais as seccoes a enviar chaves
-            String[] sections = "all".equals(permission)
-                    ? new String[]{"E", "G", "L", "M", "P", "S"}
-                    : new String[]{permission};
-
-            // Obter certificado do target user uma vez (igual para todas as seccoes)
-            java.security.cert.Certificate targetCert = permissionsManager.getUserCertificate(userManager, targetUser);
-            if (targetCert == null) {
+        // Passo 2: verificar se o cliente precisa do certificado do target
+        String certRequest = (String) inStream.readObject();
+        if ("NEED-CERT".equals(certRequest)) {
+            try {
+                java.security.cert.Certificate targetCert = permissionsManager.getUserCertificate(userManager,
+                        targetUser);
+                if (targetCert == null) {
+                    sendResponse(outStream, "NOUSER");
+                    return;
+                }
+                outStream.writeObject(targetCert.getEncoded());
+                outStream.flush();
+            } catch (Exception e) {
                 sendResponse(outStream, "NOUSER");
                 return;
             }
-            byte[] certBytes = targetCert.getEncoded();
+        }
+        // Se "HAVE-CERT", nao ha nada a enviar
 
+        // Passo 3: loop de troca de chaves por seccao
+        String[] sections = "all".equals(permission)
+                ? new String[] { "E", "G", "L", "M", "P", "S" }
+                : new String[] { permission };
+
+        try {
             for (String section : sections) {
                 byte[] encryptedSectionKey = permissionsManager.loadSectionKeyForUser(houseName, section, user);
                 if (encryptedSectionKey == null || encryptedSectionKey.length == 0) {
@@ -297,20 +310,11 @@ public class ClientHandler extends Thread {
                     return;
                 }
 
-                // Primeiro sinal ao cliente para esta seccao
                 sendResponse(outStream, "SEND-KEY");
                 outStream.writeObject(encryptedSectionKey);
                 outStream.flush();
 
-                // Enviar certificado do target user como byte[] serializado
-                sendResponse(outStream, "SEND-CERT");
-                outStream.writeObject(certBytes);
-                outStream.flush();
-
-                // Receber chave cifrada com chave publica do target user
                 byte[] encryptedKey = (byte[]) inStream.readObject();
-
-                // Guardar chave cifrada para o target user
                 permissionsManager.saveSectionKeyForUser(houseName, section, targetUser, encryptedKey);
             }
 
