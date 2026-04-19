@@ -5,7 +5,6 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
@@ -32,8 +31,7 @@ public class CryptoManager {
     }
 
     /**
-     * Deriva uma chave AES-128 a partir da password e do salt usando
-     * PBKDF2WithHmacSHA256.
+     * Deriva uma chave AES-128 a partir da password e do salt usando PBKDF2WithHmacSHA256.
      */
     private static SecretKey deriveKey() throws Exception {
         KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH);
@@ -104,19 +102,6 @@ public class CryptoManager {
     public static byte[] encryptWithPublicKey(byte[] data, PublicKey pubKey) throws Exception {
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.ENCRYPT_MODE, pubKey);
-        return cipher.doFinal(data);
-    }
-
-    /**
-     * Decifra dados com uma chave privada RSA (RSA/ECB/PKCS1Padding).
-     *
-     * @param data    criptograma RSA
-     * @param privKey chave privada RSA do destinatário
-     * @return plaintext
-     */
-    public static byte[] decryptWithPrivateKey(byte[] data, PrivateKey privKey) throws Exception {
-        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        cipher.init(Cipher.DECRYPT_MODE, privKey);
         return cipher.doFinal(data);
     }
 }

@@ -268,40 +268,43 @@ public class ClientHandler extends Thread {
 
         // Validar permissoes basicas
         String validationResult = permissionsManager.adicionarUtilizador(userManager, houseManager, user, targetUser, houseName, permission);
-        
+
         if (!"OK".equals(validationResult)) {
             sendResponse(outStream, validationResult);
             return;
         }
 
-        sendResponse(outStream, "OK");
-
-        // Para permissoes de seccao (ou "all"), enviar chaves cifradas ao owner
+        // Nao enviar "OK" antes da troca de chaves — o primeiro sinal ao cliente
+        // e "SEND-KEY" (ou erro). Isto evita dessincronizacao do protocolo.
         try {
-            // Determinar quais as secoes a enviar
-            String[] sections = "all".equals(permission) ? new String[]{"E", "G", "L", "M", "P", "S"} : new String[]{permission};
+            // Determinar quais as seccoes a enviar chaves
+            String[] sections = "all".equals(permission)
+                    ? new String[]{"E", "G", "L", "M", "P", "S"}
+                    : new String[]{permission};
+
+            // Obter certificado do target user uma vez (igual para todas as seccoes)
+            java.security.cert.Certificate targetCert = permissionsManager.getUserCertificate(userManager, targetUser);
+            if (targetCert == null) {
+                sendResponse(outStream, "NOUSER");
+                return;
+            }
+            byte[] certBytes = targetCert.getEncoded();
 
             for (String section : sections) {
                 byte[] encryptedSectionKey = permissionsManager.loadSectionKeyForUser(houseName, section, user);
-                if (encryptedSectionKey == null) {
+                if (encryptedSectionKey == null || encryptedSectionKey.length == 0) {
                     sendResponse(outStream, "NOKEY");
                     return;
                 }
 
+                // Primeiro sinal ao cliente para esta seccao
                 sendResponse(outStream, "SEND-KEY");
                 outStream.writeObject(encryptedSectionKey);
                 outStream.flush();
 
-                // Enviar certificado do target user
-                java.security.cert.Certificate targetCert = permissionsManager.getUserCertificate(userManager, targetUser);
-                if (targetCert == null) {
-                    sendResponse(outStream, "NOUSER");
-                    return;
-                }
+                // Enviar certificado do target user como byte[] serializado
                 sendResponse(outStream, "SEND-CERT");
-                byte[] certBytes = targetCert.getEncoded();
-                outStream.writeLong(certBytes.length);
-                outStream.write(certBytes);
+                outStream.writeObject(certBytes);
                 outStream.flush();
 
                 // Receber chave cifrada com chave publica do target user

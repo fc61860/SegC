@@ -29,5 +29,10 @@ if (Test-Path $clientDataDir) {
     New-Item -ItemType Directory -Path $clientDataDir -Force | Out-Null
 }
 
+# Remover ficheiros de chaves de seccao, certificados e hashes
+Get-ChildItem $dataDir -Filter 'key.*' -File | Remove-Item -Force
+Get-ChildItem $dataDir -Filter '*.cer' -File | Remove-Item -Force
+Get-ChildItem $dataDir -Filter '*.hash' -File | Remove-Item -Force
+
 Get-ChildItem $dataDir -Filter '*.tmp' -File -ErrorAction SilentlyContinue | Remove-Item -Force
 Get-ChildItem $dataDir -Filter '*.hash' -File -ErrorAction SilentlyContinue | Remove-Item -Force

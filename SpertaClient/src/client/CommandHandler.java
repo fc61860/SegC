@@ -1,16 +1,11 @@
 package SpertaClient.src.client;
 
 import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.security.KeyStore;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
-import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
 
 /**
  * Processa comandos introduzidos pelo utilizador e trata a comunicacao com o
@@ -162,20 +157,14 @@ public class CommandHandler {
                 return;
             }
 
-            // Carregar chave pública RSA da keystore
-            PublicKey pubKey = loadPublicKey();
+            // Carregar chave publica RSA da keystore
+            PublicKey pubKey = CryptoUtils.loadPublicKey(keystorePath, keystorePass);
 
-            // Gerar e enviar chave AES-128 para cada secção, cifrada com RSA
-            String[] sections = { "E", "G", "L", "M", "P", "S" };
+            // Gerar e enviar chave AES-128 para cada seccao, cifrada com RSA
+            String[] sections = {"E", "G", "L", "M", "P", "S"};
             for (String s : sections) {
-                KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-                keyGen.init(128);
-                byte[] sectionKeyBytes = keyGen.generateKey().getEncoded();
-
-                Cipher rsaCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-                rsaCipher.init(Cipher.ENCRYPT_MODE, pubKey);
-                byte[] encryptedKey = rsaCipher.doFinal(sectionKeyBytes);
-
+                byte[] sectionKeyBytes = CryptoUtils.generateSectionKey();
+                byte[] encryptedKey = CryptoUtils.encryptWithPublicKey(sectionKeyBytes, pubKey);
                 outStream.writeObject(encryptedKey);
                 outStream.flush();
             }
@@ -190,6 +179,7 @@ public class CommandHandler {
 
     /**
      * Trata o comando ADD, incluindo a troca de chaves de seccao quando necessario.
+     * Suporta permissoes de seccao unica e "all" (6 seccoes).
      */
     private void handleAddCommand(String[] parts, String input, ObjectOutputStream outStream,
             ObjectInputStream inStream) {
@@ -198,83 +188,53 @@ public class CommandHandler {
             return;
         }
 
-        String targetUser = parts[1];
-        String permission = parts[3];
-
         try {
             sendCommand(input, outStream);
+
+            // Primeiro sinal: "SEND-KEY" (troca de chave) ou codigo de erro
             String response = (String) inStream.readObject();
-            System.out.println("Server: " + response);
 
             if (!"SEND-KEY".equals(response)) {
+                System.out.println("Server: " + response);
                 return;
             }
 
-            // Receber chave de seccao cifrada com chave publica do owner
-            byte[] encryptedSectionKey = (byte[]) inStream.readObject();
+            // Loop para cada seccao (1 seccao especifica ou 6 para "all")
+            while ("SEND-KEY".equals(response)) {
+                // Receber chave de seccao cifrada com chave publica do owner
+                byte[] encryptedSectionKey = (byte[]) inStream.readObject();
+                byte[] sectionKey = CryptoUtils.decryptWithPrivateKey(
+                        encryptedSectionKey, CryptoUtils.loadPrivateKey(keystorePath, keystorePass));
 
-            // Decifrar com chave privada do owner
-            byte[] sectionKey = decryptWithPrivateKey(encryptedSectionKey);
+                // Receber marcador de certificado
+                response = (String) inStream.readObject();
+                if (!"SEND-CERT".equals(response)) {
+                    System.out.println("Erro: esperado SEND-CERT, recebido: " + response);
+                    return;
+                }
 
-            // Receber certificado do target user
-            response = (String) inStream.readObject();
-            if (!"SEND-CERT".equals(response)) {
-                System.out.println("Erro: esperado SEND-CERT");
-                return;
+                // Receber certificado do target user como byte[] serializado
+                byte[] certBytes = (byte[]) inStream.readObject();
+                CertificateFactory cf = CertificateFactory.getInstance("X.509");
+                Certificate targetCert = cf.generateCertificate(new ByteArrayInputStream(certBytes));
+                PublicKey targetPubKey = targetCert.getPublicKey();
+
+                // Cifrar chave de seccao com chave publica do target user
+                byte[] encryptedKey = CryptoUtils.encryptWithPublicKey(sectionKey, targetPubKey);
+
+                // Enviar chave cifrada de volta ao servidor
+                outStream.writeObject(encryptedKey);
+                outStream.flush();
+
+                // Ler proximo sinal: "SEND-KEY" para proxima seccao ou "OK" final (ou erro)
+                response = (String) inStream.readObject();
             }
 
-            long certSize = inStream.readLong();
-            byte[] certBytes = new byte[(int) certSize];
-            inStream.readFully(certBytes);
-
-            CertificateFactory cf = CertificateFactory.getInstance("X.509");
-            Certificate targetCert = cf.generateCertificate(new ByteArrayInputStream(certBytes));
-            PublicKey targetPubKey = targetCert.getPublicKey();
-
-            // Cifrar chave de seccao com chave publica do target user
-            Cipher rsaCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-            rsaCipher.init(Cipher.ENCRYPT_MODE, targetPubKey);
-            byte[] encryptedKey = rsaCipher.doFinal(sectionKey);
-
-            // Enviar chave cifrada de volta ao servidor
-            outStream.writeObject(encryptedKey);
-            outStream.flush();
-
-            response = (String) inStream.readObject();
             System.out.println("Server: " + response);
 
         } catch (Exception e) {
             System.out.println("Erro ao processar comando ADD: " + e.getMessage());
         }
-    }
-
-    /**
-     * Carrega a chave pública RSA a partir da keystore PKCS12 do cliente.
-     */
-    private PublicKey loadPublicKey() throws Exception {
-        KeyStore ks = KeyStore.getInstance("PKCS12");
-        try (FileInputStream fis = new FileInputStream(keystorePath)) {
-            ks.load(fis, keystorePass.toCharArray());
-        }
-        String alias = ks.aliases().nextElement();
-        Certificate cert = ks.getCertificate(alias);
-        return cert.getPublicKey();
-    }
-
-    /**
-     * Decifra dados com a chave privada RSA do cliente.
-     */
-    private byte[] decryptWithPrivateKey(byte[] encryptedData) throws Exception {
-        KeyStore ks = KeyStore.getInstance("PKCS12");
-        try (FileInputStream fis = new FileInputStream(keystorePath)) {
-            ks.load(fis, keystorePass.toCharArray());
-        }
-        String alias = ks.aliases().nextElement();
-        PrivateKey privKey = (PrivateKey) ks.getKey(alias, keystorePass.toCharArray());
-
-        Cipher rsaCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        rsaCipher.init(Cipher.DECRYPT_MODE, privKey);
-        return rsaCipher.doFinal(encryptedData);
     }
 
     /**
