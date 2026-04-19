@@ -1,6 +1,7 @@
 package SpertaClient.src.client;
 
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -102,5 +103,62 @@ public class CryptoUtils {
 
         // 4. Decrypt
         return cipher.doFinal(ciphertext);
+    }
+
+    /**
+     * Verifica se a truststore JKS contem um certificado com o alias indicado.
+     *
+     * @param truststorePath caminho para o ficheiro JKS
+     * @param truststorePass password da truststore
+     * @param alias          alias a procurar (normalmente o username)
+     */
+    public static boolean hasCertInTruststore(String truststorePath, String truststorePass, String alias)
+            throws Exception {
+        KeyStore ks = KeyStore.getInstance("JKS");
+        try (FileInputStream fis = new FileInputStream(truststorePath)) {
+            ks.load(fis, truststorePass.toCharArray());
+        }
+        return ks.containsAlias(alias);
+    }
+
+    /**
+     * Guarda um certificado na truststore JKS com o alias indicado.
+     *
+     * @param truststorePath caminho para o ficheiro JKS
+     * @param truststorePass password da truststore
+     * @param alias          alias com que guardar o certificado (normalmente o username)
+     * @param cert           certificado a guardar
+     */
+    public static void saveCertToTruststore(String truststorePath, String truststorePass, String alias,
+            Certificate cert) throws Exception {
+        KeyStore ks = KeyStore.getInstance("JKS");
+        try (FileInputStream fis = new FileInputStream(truststorePath)) {
+            ks.load(fis, truststorePass.toCharArray());
+        }
+        ks.setCertificateEntry(alias, cert);
+        try (FileOutputStream fos = new FileOutputStream(truststorePath)) {
+            ks.store(fos, truststorePass.toCharArray());
+        }
+    }
+
+    /**
+     * Carrega a chave publica de um utilizador a partir da truststore JKS.
+     *
+     * @param truststorePath caminho para o ficheiro JKS
+     * @param truststorePass password da truststore
+     * @param alias          alias do certificado (normalmente o username)
+     * @return chave publica RSA do utilizador
+     */
+    public static PublicKey loadPublicKeyFromTruststore(String truststorePath, String truststorePass, String alias)
+            throws Exception {
+        KeyStore ks = KeyStore.getInstance("JKS");
+        try (FileInputStream fis = new FileInputStream(truststorePath)) {
+            ks.load(fis, truststorePass.toCharArray());
+        }
+        Certificate cert = ks.getCertificate(alias);
+        if (cert == null) {
+            throw new Exception("Certificado nao encontrado na truststore para alias: " + alias);
+        }
+        return cert.getPublicKey();
     }
 }
