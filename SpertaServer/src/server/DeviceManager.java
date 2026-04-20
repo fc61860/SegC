@@ -59,16 +59,6 @@ public class DeviceManager {
      */
     public String envioValor(HouseManager houseManager, PermissionsManager permissionsManager, String user,
             String houseName, String device, String rawValue) throws IOException {
-        int value;
-        try {
-            value = Integer.parseInt(rawValue);
-        } catch (NumberFormatException e) {
-            return "NOK";
-        }
-
-        if (value < 0 || value > 600) {
-            return "NOK";
-        }
 
         if (!SpertaServer.checkIntegrityEncrypted(FICHEIRO_ESTADOS)) {
             System.err.println("NOK-INTEGRITY");
@@ -85,7 +75,7 @@ public class DeviceManager {
             return "NOD";
         }
 
-        updatePlaceTimeInHouse(houseName, device, value);
+        updatePlaceTimeInHouse(houseName, device, rawValue);
         return "OK";
     }
 
@@ -188,7 +178,7 @@ public class DeviceManager {
      * @param newTime   novo valor a persistir
      * @throws IOException se ocorrer um erro ao atualizar estados ou logs
      */
-    private void updatePlaceTimeInHouse(String houseName, String place, int newTime) throws IOException {
+    private void updatePlaceTimeInHouse(String houseName, String place, String newTime) throws IOException {
         try {
             byte[] data = SpertaServer.readDecrypted(FICHEIRO_ESTADOS);
             String content = new String(data, StandardCharsets.UTF_8);
@@ -211,7 +201,7 @@ public class DeviceManager {
                         String time = deviceParts[1];
 
                         if (deviceName.startsWith(place)) {
-                            time = String.valueOf(newTime);
+                            time = newTime;
                             addLogEntry(houseName, deviceName, newTime);
                         }
 
@@ -299,7 +289,7 @@ public class DeviceManager {
      * @param value     valor registado
      * @throws IOException se ocorrer um erro ao escrever no ficheiro de log
      */
-    private void addLogEntry(String houseName, String device, int value) throws IOException {
+    private void addLogEntry(String houseName, String device, String value) throws IOException {
         String fileName = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
         try {
             byte[] existing = SpertaServer.readDecrypted(fileName);

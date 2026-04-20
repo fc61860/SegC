@@ -105,6 +105,18 @@ public class CryptoUtils {
         return cipher.doFinal(ciphertext);
     }
 
+    public static byte[] encryptWithAES(byte[] plaintext, SecretKey key) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        byte[] iv = new byte[16];
+        new java.security.SecureRandom().nextBytes(iv);
+        cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
+        byte[] ciphertext = cipher.doFinal(plaintext);
+        byte[] result = new byte[16 + ciphertext.length];
+        System.arraycopy(iv, 0, result, 0, 16);
+        System.arraycopy(ciphertext, 0, result, 16, ciphertext.length);
+        return result;
+    }
+
     /**
      * Verifica se a truststore JKS contem um certificado com o alias indicado.
      *

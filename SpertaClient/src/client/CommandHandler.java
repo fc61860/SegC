@@ -102,7 +102,7 @@ public class CommandHandler {
     }
 
     /**
-     * Trata o comando EC, deixando a validacao do valor para o servidor.
+     * Trata o comando EC, cifrando o valor e enviando-o para o servidor.
      */
     private void handleEcCommand(String[] parts, String input, ObjectOutputStream outStream,
             ObjectInputStream inStream) {
@@ -111,7 +111,39 @@ public class CommandHandler {
             return;
         }
 
-        handleSimpleCommand(parts, input, "Formato incorreto. Tente: EC <hm> <d> <int>", outStream, inStream, 4);
+        try {
+            // Passo 1: Pedir chave de seccao ao servidor
+            outStream.writeObject("EC_GET_KEY " + parts[1] + " " + parts[2]);
+            outStream.flush();
+
+            Object response = inStream.readObject();
+            if (response instanceof String) {
+                System.out.println("Server: " + response);
+                return;
+            }
+
+            byte[] encryptedSectionKey = (byte[]) response;
+
+            // Passo 2: Decifrar a chave de seccao com a nossa chave privada
+            java.security.PrivateKey privateKey = CryptoUtils.loadPrivateKey(keystorePath, keystorePass);
+            byte[] sectionKeyBytes = CryptoUtils.decryptWithPrivateKey(encryptedSectionKey, privateKey);
+            javax.crypto.SecretKey sectionKey = new javax.crypto.spec.SecretKeySpec(sectionKeyBytes, "AES");
+
+            // Passo 3: Cifrar o valor com a chave de seccao e codificar em Base64
+            byte[] encryptedValue = CryptoUtils.encryptWithAES(parts[3].getBytes(java.nio.charset.StandardCharsets.UTF_8), sectionKey);
+            String base64EncryptedValue = java.util.Base64.getEncoder().encodeToString(encryptedValue);
+
+            // Passo 4: Enviar o valor cifrado para o servidor
+            String ecCommand = "EC " + parts[1] + " " + parts[2] + " " + base64EncryptedValue;
+            outStream.writeObject(ecCommand);
+            outStream.flush();
+
+            String answer = (String) inStream.readObject();
+            System.out.println("Server: " + answer);
+
+        } catch (Exception e) {
+            System.out.println("Erro ao comunicar com o servidor durante EC.");
+        }
     }
 
     /**
@@ -127,7 +159,74 @@ public class CommandHandler {
         try {
             sendCommand(input, outStream);
             String nomeFicheiro = "client_summary_" + parts[1] + ".txt";
-            fileTransferManager.processFile(inStream, nomeFicheiro);
+            File summaryFile = fileTransferManager.processFile(inStream, nomeFicheiro);
+            if (summaryFile == null) return;
+
+            int numKeys = inStream.readInt();
+            java.util.Map<String, javax.crypto.SecretKey> keysMap = new java.util.HashMap<>();
+            java.security.PrivateKey privateKey = CryptoUtils.loadPrivateKey(keystorePath, keystorePass);
+
+            for (int i=0; i<numKeys; i++) {
+                String sec = (String) inStream.readObject();
+                int len = inStream.readInt();
+                byte[] encryptedKey = new byte[len];
+                inStream.readFully(encryptedKey);
+
+                byte[] decKey = CryptoUtils.decryptWithPrivateKey(encryptedKey, privateKey);
+                keysMap.put(sec, new javax.crypto.spec.SecretKeySpec(decKey, "AES"));
+            }
+
+            // Ler resumo, decifrar valores e guardar
+            java.util.List<String> linhas = Files.readAllLines(summaryFile.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+            java.util.List<String> linhasDecifradas = new java.util.ArrayList<>();
+            System.out.println("Resumo de Leituras:");
+            
+            for (String linha : linhas) {
+                if (linha.trim().isEmpty()) continue;
+                String[] parts1 = linha.split(":", 2);
+                if (parts1.length == 2) {
+                    String device = parts1[0].trim();
+                    String rest = parts1[1].trim();
+                    String[] parts2 = rest.split(",", 2);
+                    if (parts2.length == 2) {
+                        String date = parts2[0].trim();
+                        String b64 = parts2[1].trim();
+
+                        String sec = device.substring(0, 1);
+                        javax.crypto.SecretKey sk = keysMap.get(sec);
+                        if (sk != null) {
+                            try {
+                                byte[] encVal = java.util.Base64.getDecoder().decode(b64);
+                                byte[] decVal = CryptoUtils.decryptFile(encVal, sk);
+                                String valStr = new String(decVal, java.nio.charset.StandardCharsets.UTF_8);
+                                String decryptedLine = device + ": " + date + ", " + valStr;
+                                System.out.println(decryptedLine);
+                                linhasDecifradas.add(decryptedLine);
+                            } catch (Exception ex) {
+                                String errorLine = device + ": " + date + ", [Erro ao decifrar]";
+                                System.out.println(errorLine);
+                                linhasDecifradas.add(errorLine);
+                            }
+                        } else {
+                            String noKeyLine = device + ": " + date + ", [Sem chave para " + sec + "]";
+                            System.out.println(noKeyLine);
+                            linhasDecifradas.add(noKeyLine);
+                        }
+                    } else {
+                        System.out.println(linha);
+                        linhasDecifradas.add(linha);
+                    }
+                } else {
+                    System.out.println(linha);
+                    linhasDecifradas.add(linha);
+                }
+            }
+
+            String outputPath = "SpertaClient/data/decrypted_" + nomeFicheiro;
+            Files.write(Paths.get(outputPath), linhasDecifradas, java.nio.charset.StandardCharsets.UTF_8);
+            System.out.println("Resumo decifrado e guardado em: " + outputPath);
+
+            Files.deleteIfExists(summaryFile.toPath());
         } catch (Exception e) {
             System.out.println("Erro ao comunicar com o servidor.");
         }
@@ -147,27 +246,57 @@ public class CommandHandler {
             sendCommand(input, outStream);
             String nomeFicheiro = "client_log_" + parts[1] + "_" + parts[2] + ".csv";
             File logFile = fileTransferManager.processFile(inStream, "temp_log.csv");
-            File keyFile = fileTransferManager.processKeyFile(inStream, "temp_key.bin");
+            if (logFile == null) {
+                return;
+            }
 
-            byte[] encryptedFile = Files.readAllBytes(logFile.toPath());
+            File keyFile = fileTransferManager.processKeyFile(inStream, "temp_key.bin");
+            if (keyFile == null) {
+                return;
+            }
+
             byte[] encryptedKey = Files.readAllBytes(keyFile.toPath());
 
-            // apagar os ficheiros
+            // Carregar a chave de seccao
+            PrivateKey privateKey = CryptoUtils.loadPrivateKey(keystorePath, keystorePass);
+            byte[] sectionKeyBytes = CryptoUtils.decryptWithPrivateKey(encryptedKey, privateKey);
+            SecretKey sectionKey = new SecretKeySpec(sectionKeyBytes, "AES");
+
+            // Processar o ficheiro linha a linha
+            java.util.List<String> linhas = Files.readAllLines(logFile.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+            java.util.List<String> linhasDecifradas = new java.util.ArrayList<>();
+
+            for (String linha : linhas) {
+                if (linha.trim().isEmpty()) continue;
+                String[] split = linha.split(",", 2);
+                if (split.length == 2) {
+                    String timestamp = split[0].trim();
+                    String b64 = split[1].trim();
+                    try {
+                        byte[] encryptedVal = java.util.Base64.getDecoder().decode(b64);
+                        byte[] decryptedVal = CryptoUtils.decryptFile(encryptedVal, sectionKey);
+                        String valueStr = new String(decryptedVal, java.nio.charset.StandardCharsets.UTF_8);
+                        linhasDecifradas.add(timestamp + ", " + valueStr);
+                    } catch (Exception ex) {
+                        linhasDecifradas.add(timestamp + ", [Erro ao decifrar]");
+                    }
+                } else {
+                    linhasDecifradas.add(linha);
+                }
+            }
+
+            String outputPath = "SpertaClient/data/decrypted_" + nomeFicheiro;
+            Files.write(Paths.get(outputPath), linhasDecifradas, java.nio.charset.StandardCharsets.UTF_8);
+            System.out.println("Historico decifrado e guardado em: " + outputPath);
+
+            // apagar os ficheiros temporarios
             try {
                 Files.deleteIfExists(logFile.toPath());
                 Files.deleteIfExists(keyFile.toPath());
             } catch (IOException e) {
                 System.out.println("Warning: could not delete temp files: " + e.getMessage());
             }
-            System.out.println(encryptedFile.length);
-            // nao sei se devia tar aqui
-            PrivateKey privateKey = CryptoUtils.loadPrivateKey(keystorePath, keystorePass);
-            byte[] aesKeyBytes = CryptoUtils.decryptWithPrivateKey(encryptedKey, privateKey);
-            SecretKey aesKey = new SecretKeySpec(aesKeyBytes, "AES");
-            System.out.println(aesKeyBytes.length);
-            byte[] plaintext = CryptoUtils.decryptFile(encryptedFile, aesKey);
 
-            Files.write(Paths.get("decrypted_" + nomeFicheiro), plaintext);
         } catch (Exception e) {
             System.out.println("Erro ao comunicar com o servidor.");
             e.printStackTrace();

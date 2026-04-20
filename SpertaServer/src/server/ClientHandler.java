@@ -208,6 +208,9 @@ public class ClientHandler extends Thread {
             case "EC":
                 envioValor(user, outStream, parts);
                 break;
+            case "EC_GET_KEY":
+                getSectionKey(user, outStream, parts);
+                break;
             case "RT":
                 receberTemp(user, outStream, parts);
                 break;
@@ -352,6 +355,33 @@ public class ClientHandler extends Thread {
     }
 
     /**
+     * Trata o comando EC_GET_KEY para enviar a chave de seccao ao cliente para que
+     * este possa cifrar os valores.
+     */
+    private void getSectionKey(String user, ObjectOutputStream outStream, String[] parts) throws IOException {
+        if (!hasExactArgs(parts, 3)) {
+            sendResponse(outStream, "NOK");
+            return;
+        }
+
+        String houseName = parts[1];
+        String device = parts[2];
+        String section = device.substring(0, 1);
+
+        try {
+            byte[] encryptedSectionKey = permissionsManager.loadSectionKeyForUser(houseName, section, user);
+            if (encryptedSectionKey == null || encryptedSectionKey.length == 0) {
+                sendResponse(outStream, "NOKEY");
+                return;
+            }
+            outStream.writeObject(encryptedSectionKey);
+            outStream.flush();
+        } catch (Exception e) {
+            sendResponse(outStream, "NOK");
+        }
+    }
+
+    /**
      * Trata o comando RT e delega o envio do resumo de leituras ao LogManager.
      */
     private void receberTemp(String user, ObjectOutputStream outStream, String[] parts) throws IOException {
@@ -372,7 +402,7 @@ public class ClientHandler extends Thread {
             return;
         }
 
-        logManager.receberHistorico(houseManager, permissionsManager, deviceManager, user, parts[1], parts[2],
+        logManager.receberHistorico(userManager, houseManager, permissionsManager, deviceManager, user, parts[1], parts[2],
                 outStream);
     }
 

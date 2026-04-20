@@ -59,11 +59,6 @@ public class CryptoManager {
         System.arraycopy(iv, 0, result, 0, IV_LENGTH);
         System.arraycopy(ciphertext, 0, result, IV_LENGTH, ciphertext.length);
         return result;
-        // SecretKey aesKey = generateRandomKey(); // NOT deriveKey()
-
-        // byte[] encryptedFile = encryptWithAES(plaintext, aesKey);
-
-        // byte[] encryptedKey = encryptWithPublicKey(aesKey.getEncoded(), clientPublicKey);
     }
 
     /**
@@ -87,15 +82,35 @@ public class CryptoManager {
         return cipher.doFinal(ciphertext);
     }
 
-    /**
-     * Gera uma chave AES-128 aleatória para uso como chave de secção.
-     *
-     * @return bytes da chave AES-128
-     */
     public static byte[] generateSectionKey() throws Exception {
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(128);
         return keyGen.generateKey().getEncoded();
+    }
+
+    /**
+     * Gera uma chave AES-128 aleatoria.
+     */
+    public static SecretKey generateRandomKey() throws Exception {
+        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+        keyGen.init(128);
+        return keyGen.generateKey();
+    }
+
+    /**
+     * Cifra um array de bytes com uma chave AES/CBC/PKCS5Padding.
+     * O IV aleatorio e prefixado ao criptograma devolvido.
+     */
+    public static byte[] encryptWithAES(byte[] plaintext, SecretKey key) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        byte[] iv = new byte[IV_LENGTH];
+        new SecureRandom().nextBytes(iv);
+        cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
+        byte[] ciphertext = cipher.doFinal(plaintext);
+        byte[] result = new byte[IV_LENGTH + ciphertext.length];
+        System.arraycopy(iv, 0, result, 0, IV_LENGTH);
+        System.arraycopy(ciphertext, 0, result, IV_LENGTH, ciphertext.length);
+        return result;
     }
 
     /**

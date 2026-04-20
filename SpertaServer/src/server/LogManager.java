@@ -60,7 +60,7 @@ public class LogManager {
      * @param outStream          stream de saida para enviar o ficheiro ao cliente
      * @throws IOException se ocorrer um erro ao ler ou enviar o ficheiro
      */
-    public void receberHistorico(HouseManager houseManager, PermissionsManager permissionsManager,
+    public void receberHistorico(UserManager userManager, HouseManager houseManager, PermissionsManager permissionsManager,
             DeviceManager deviceManager, String user, String houseName, String device, ObjectOutputStream outStream)
             throws IOException {
         String line = houseManager.findHouseLine(houseName);
@@ -80,7 +80,7 @@ public class LogManager {
             return;
         }
 
-        sendLog(houseName, device, user, outStream);
+        sendLog(userManager, permissionsManager, houseName, device, user, outStream);
     }
 
     /**
@@ -200,6 +200,30 @@ public class LogManager {
         } finally {
             summary.delete();
         }
+
+        // Send section keys
+        String[] allSections = {"E", "G", "L", "M", "P", "S"};
+        int numKeys = 0;
+        for (String s : allSections) {
+            File keyFile = new File("SpertaServer/data/key." + houseName + "." + s + "." + user);
+            if (keyFile.exists() && keyFile.length() > 0) {
+                numKeys++;
+            }
+        }
+
+        outStream.writeInt(numKeys);
+        outStream.flush();
+
+        for (String s : allSections) {
+            File keyFile = new File("SpertaServer/data/key." + houseName + "." + s + "." + user);
+            if (keyFile.exists() && keyFile.length() > 0) {
+                outStream.writeObject(s);
+                byte[] keyBytes = Files.readAllBytes(keyFile.toPath());
+                outStream.writeInt(keyBytes.length);
+                outStream.write(keyBytes);
+                outStream.flush();
+            }
+        }
     }
 
     /**
@@ -210,7 +234,7 @@ public class LogManager {
      * @param outStream stream de saida para enviar o ficheiro
      * @throws IOException se ocorrer um erro ao abrir ou transmitir o log
      */
-    private void sendLog(String houseName, String device, String user, ObjectOutputStream outStream) throws IOException {
+    private void sendLog(UserManager userManager, PermissionsManager permissionsManager, String houseName, String device, String user, ObjectOutputStream outStream) throws IOException {
         String logPath = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
         File log = new File(logPath);
 
@@ -221,9 +245,9 @@ public class LogManager {
         }
 
         try {
-            byte[] encrypted = Files.readAllBytes(log.toPath());
+            byte[] decryptedLog = SpertaServer.readDecrypted(logPath);
 
-            if (encrypted.length == 0) {
+            if (decryptedLog.length == 0) {
                 outStream.writeObject("NODATA");
                 outStream.flush();
                 return;
@@ -232,10 +256,10 @@ public class LogManager {
             outStream.writeObject("OK");
             outStream.flush();
 
-            outStream.writeLong(encrypted.length);
+            outStream.writeLong(decryptedLog.length);
             outStream.flush();
 
-            outStream.write(encrypted);
+            outStream.write(decryptedLog);
             outStream.flush();
 
             sendSectionKeyFile(houseName, device.charAt(0), user, outStream);
