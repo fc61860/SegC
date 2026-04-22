@@ -138,7 +138,8 @@ public class CryptoUtils {
      *
      * @param truststorePath caminho para o ficheiro JKS
      * @param truststorePass password da truststore
-     * @param alias          alias com que guardar o certificado (normalmente o username)
+     * @param alias          alias com que guardar o certificado (normalmente o
+     *                       username)
      * @param cert           certificado a guardar
      */
     public static void saveCertToTruststore(String truststorePath, String truststorePass, String alias,

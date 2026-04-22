@@ -7,4 +7,4 @@ if [ "$#" -ne 4 ]; then
     exit 1
 fi
 
-java -cp "SpertaServer/bin" SpertaServer "$@"
+java -jar "SpertaServer/bin/SpertaServer.jar" "$@"

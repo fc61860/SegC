@@ -13,6 +13,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-& java -cp 'SpertaServer/bin' 'SpertaServer' $Port $PasswordCifra $Keystore $PasswordKeystore
+& java -jar 'SpertaServer/bin/SpertaServer.jar' $Port $PasswordCifra $Keystore $PasswordKeystore
 
 exit $LASTEXITCODE

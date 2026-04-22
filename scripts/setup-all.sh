@@ -22,14 +22,18 @@ find "$client_data_dir" -maxdepth 1 -type f -delete
 # ── Compile server ────────────────────────────────────────────────────────────
 echo "=== Compiling server... ==="
 
-server_out="SpertaServer/bin"
-mkdir -p "$server_out"
+server_classes_dir="SpertaServer/bin/classes"
+server_jar_path="SpertaServer/bin/SpertaServer.jar"
+mkdir -p "$server_classes_dir"
 
 mapfile -t server_sources < <(find "SpertaServer/src/server" -maxdepth 1 -name '*.java' | sort)
 if [ "${#server_sources[@]}" -eq 0 ]; then
     echo "Nao foram encontrados ficheiros Java do servidor." >&2; exit 1
 fi
-javac -d "$server_out" "${server_sources[@]}"
+javac -d "$server_classes_dir" "${server_sources[@]}"
+
+rm -f "$server_jar_path"
+(cd "$server_classes_dir" && jar --create --file "../../SpertaServer.jar" --main-class SpertaServer .)
 
 # ── Compile client ────────────────────────────────────────────────────────────
 echo "=== Compiling client... ==="

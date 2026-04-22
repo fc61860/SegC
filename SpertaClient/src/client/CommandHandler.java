@@ -103,6 +103,10 @@ public class CommandHandler {
 
     /**
      * Trata o comando EC, cifrando o valor e enviando-o para o servidor.
+     * Protocolo:
+     * a) Envia EC <hm> <d> ao servidor (notificacao, sem o valor).
+     * b) Recebe a chave de seccao cifrada com a chave publica do utilizador.
+     * c) Decifra a chave, cifra o valor com AES e envia o valor cifrado.
      */
     private void handleEcCommand(String[] parts, String input, ObjectOutputStream outStream,
             ObjectInputStream inStream) {
@@ -112,10 +116,11 @@ public class CommandHandler {
         }
 
         try {
-            // Passo 1: Pedir chave de seccao ao servidor
-            outStream.writeObject("EC_GET_KEY " + parts[1] + " " + parts[2]);
+            // Passo a: Enviar notificacao EC ao servidor (sem o valor)
+            outStream.writeObject("EC " + parts[1] + " " + parts[2]);
             outStream.flush();
 
+            // Passo b: Receber chave de seccao cifrada ou mensagem de erro
             Object response = inStream.readObject();
             if (response instanceof String) {
                 System.out.println("Server: " + response);
@@ -124,18 +129,15 @@ public class CommandHandler {
 
             byte[] encryptedSectionKey = (byte[]) response;
 
-            // Passo 2: Decifrar a chave de seccao com a nossa chave privada
+            // Passo c: Decifrar a chave de seccao e cifrar o valor para envio
             java.security.PrivateKey privateKey = CryptoUtils.loadPrivateKey(keystorePath, keystorePass);
             byte[] sectionKeyBytes = CryptoUtils.decryptWithPrivateKey(encryptedSectionKey, privateKey);
-            javax.crypto.SecretKey sectionKey = new javax.crypto.spec.SecretKeySpec(sectionKeyBytes, "AES");
-
-            // Passo 3: Cifrar o valor com a chave de seccao e codificar em Base64
-            byte[] encryptedValue = CryptoUtils.encryptWithAES(parts[3].getBytes(java.nio.charset.StandardCharsets.UTF_8), sectionKey);
+            SecretKey sectionKey = new SecretKeySpec(sectionKeyBytes, "AES");
+            byte[] encryptedValue = CryptoUtils.encryptWithAES(
+                    parts[3].getBytes(java.nio.charset.StandardCharsets.UTF_8), sectionKey);
             String base64EncryptedValue = java.util.Base64.getEncoder().encodeToString(encryptedValue);
 
-            // Passo 4: Enviar o valor cifrado para o servidor
-            String ecCommand = "EC " + parts[1] + " " + parts[2] + " " + base64EncryptedValue;
-            outStream.writeObject(ecCommand);
+            outStream.writeObject(base64EncryptedValue);
             outStream.flush();
 
             String answer = (String) inStream.readObject();
@@ -158,31 +160,34 @@ public class CommandHandler {
 
         try {
             sendCommand(input, outStream);
-            String nomeFicheiro = "client_summary_" + parts[1] + ".txt";
-            File summaryFile = fileTransferManager.processFile(inStream, nomeFicheiro);
-            if (summaryFile == null) return;
+            String tempFicheiro = "temp_summary.txt";
+            File summaryFile = fileTransferManager.processFile(inStream, tempFicheiro);
+            if (summaryFile == null)
+                return;
 
             int numKeys = inStream.readInt();
             java.util.Map<String, javax.crypto.SecretKey> keysMap = new java.util.HashMap<>();
             java.security.PrivateKey privateKey = CryptoUtils.loadPrivateKey(keystorePath, keystorePass);
 
-            for (int i=0; i<numKeys; i++) {
+            for (int i = 0; i < numKeys; i++) {
                 String sec = (String) inStream.readObject();
                 int len = inStream.readInt();
                 byte[] encryptedKey = new byte[len];
                 inStream.readFully(encryptedKey);
 
                 byte[] decKey = CryptoUtils.decryptWithPrivateKey(encryptedKey, privateKey);
-                keysMap.put(sec, new javax.crypto.spec.SecretKeySpec(decKey, "AES"));
+                keysMap.put(sec, new SecretKeySpec(decKey, "AES"));
             }
 
             // Ler resumo, decifrar valores e guardar
-            java.util.List<String> linhas = Files.readAllLines(summaryFile.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+            java.util.List<String> linhas = Files.readAllLines(summaryFile.toPath(),
+                    java.nio.charset.StandardCharsets.UTF_8);
             java.util.List<String> linhasDecifradas = new java.util.ArrayList<>();
             System.out.println("Resumo de Leituras:");
-            
+
             for (String linha : linhas) {
-                if (linha.trim().isEmpty()) continue;
+                if (linha.trim().isEmpty())
+                    continue;
                 String[] parts1 = linha.split(":", 2);
                 if (parts1.length == 2) {
                     String device = parts1[0].trim();
@@ -222,7 +227,8 @@ public class CommandHandler {
                 }
             }
 
-            String outputPath = "SpertaClient/data/decrypted_" + nomeFicheiro;
+            String nomeFicheiro = "client_summary_" + parts[1] + ".txt";
+            String outputPath = "SpertaClient/data/" + nomeFicheiro;
             Files.write(Paths.get(outputPath), linhasDecifradas, java.nio.charset.StandardCharsets.UTF_8);
             System.out.println("Resumo decifrado e guardado em: " + outputPath);
 
@@ -263,11 +269,13 @@ public class CommandHandler {
             SecretKey sectionKey = new SecretKeySpec(sectionKeyBytes, "AES");
 
             // Processar o ficheiro linha a linha
-            java.util.List<String> linhas = Files.readAllLines(logFile.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+            java.util.List<String> linhas = Files.readAllLines(logFile.toPath(),
+                    java.nio.charset.StandardCharsets.UTF_8);
             java.util.List<String> linhasDecifradas = new java.util.ArrayList<>();
 
             for (String linha : linhas) {
-                if (linha.trim().isEmpty()) continue;
+                if (linha.trim().isEmpty())
+                    continue;
                 String[] split = linha.split(",", 2);
                 if (split.length == 2) {
                     String timestamp = split[0].trim();
@@ -285,7 +293,7 @@ public class CommandHandler {
                 }
             }
 
-            String outputPath = "SpertaClient/data/decrypted_" + nomeFicheiro;
+            String outputPath = "SpertaClient/data/" + nomeFicheiro;
             Files.write(Paths.get(outputPath), linhasDecifradas, java.nio.charset.StandardCharsets.UTF_8);
             System.out.println("Historico decifrado e guardado em: " + outputPath);
 
@@ -349,7 +357,8 @@ public class CommandHandler {
      * 1. Servidor valida e responde OK ou erro.
      * 2. Cliente verifica truststore -> envia NEED-CERT ou HAVE-CERT.
      * 3. Se NEED-CERT: recebe certificado do servidor e guarda na truststore.
-     * 4. Loop por seccoes: recebe chave cifrada, re-cifra com pub key do target, envia.
+     * 4. Loop por seccoes: recebe chave cifrada, re-cifra com pub key do target,
+     * envia.
      */
     private void handleAddCommand(String[] parts, String input, ObjectOutputStream outStream,
             ObjectInputStream inStream) {
@@ -395,12 +404,12 @@ public class CommandHandler {
             response = (String) inStream.readObject();
             while ("SEND-KEY".equals(response)) {
                 byte[] encryptedSectionKey = (byte[]) inStream.readObject();
-                byte[] sectionKey = CryptoUtils.decryptWithPrivateKey(
+                byte[] sectionKeyBytes = CryptoUtils.decryptWithPrivateKey(
                         encryptedSectionKey, CryptoUtils.loadPrivateKey(keystorePath, keystorePass));
 
                 PublicKey targetPubKey = CryptoUtils.loadPublicKeyFromTruststore(
                         truststorePath, truststorePass, targetUser);
-                byte[] encryptedKey = CryptoUtils.encryptWithPublicKey(sectionKey, targetPubKey);
+                byte[] encryptedKey = CryptoUtils.encryptWithPublicKey(sectionKeyBytes, targetPubKey);
 
                 outStream.writeObject(encryptedKey);
                 outStream.flush();

@@ -42,7 +42,7 @@ public class FileTransferManager {
                 }
             }
 
-            System.out.println("Guardado como: " + nomeFicheiroLocal);
+            System.out.println("Guardado como: " + DIRETORIA_DATA + nomeFicheiroLocal);
             return new File(DIRETORIA_DATA + nomeFicheiroLocal);
         } catch (Exception e) {
             System.out.println("Erro ao tentar receber o ficheiro.");
@@ -87,7 +87,7 @@ public class FileTransferManager {
                 }
             }
 
-            System.out.println("Key guardada como: " + keyFileName);
+            System.out.println("Key guardada como: " + DIRETORIA_DATA + keyFileName);
             return new File(DIRETORIA_DATA + keyFileName);
         } catch (Exception e) {
             System.out.println("Erro ao tentar receber o ficheiro.");

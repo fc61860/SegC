@@ -26,14 +26,24 @@ Get-ChildItem $dataDir -Filter '*.hash' -File -ErrorAction SilentlyContinue | Re
 # ── Compile server ────────────────────────────────────────────────────────────
 Write-Host "=== Compiling server... ===" -ForegroundColor Cyan
 
-$serverOut = 'SpertaServer/bin'
-$null = New-Item -ItemType Directory -Path $serverOut -Force
+$serverClassesDir = 'SpertaServer/bin/classes'
+$serverJarPath = 'SpertaServer/bin/SpertaServer.jar'
+$null = New-Item -ItemType Directory -Path $serverClassesDir -Force
+$null = New-Item -ItemType Directory -Path 'SpertaServer/bin' -Force
 
 $serverSources = Get-ChildItem 'SpertaServer/src/server/*.java' | ForEach-Object { $_.FullName }
 if (-not $serverSources) { throw 'Nao foram encontrados ficheiros Java do servidor.' }
 
-& javac -d $serverOut @serverSources
+& javac -d $serverClassesDir @serverSources
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+if (Test-Path $serverJarPath) { Remove-Item $serverJarPath -Force }
+
+Push-Location $serverClassesDir
+& jar --create --file '..\SpertaServer.jar' --main-class 'SpertaServer' .
+$jarExit = $LASTEXITCODE
+Pop-Location
+if ($jarExit -ne 0) { exit $jarExit }
 
 # ── Compile client ────────────────────────────────────────────────────────────
 Write-Host "=== Compiling client... ===" -ForegroundColor Cyan

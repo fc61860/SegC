@@ -206,10 +206,7 @@ public class ClientHandler extends Thread {
                 registarDispositivo(user, outStream, parts);
                 break;
             case "EC":
-                envioValor(user, outStream, parts);
-                break;
-            case "EC_GET_KEY":
-                getSectionKey(user, outStream, parts);
+                envioValor(user, inStream, outStream, parts);
                 break;
             case "RT":
                 receberTemp(user, outStream, parts);
@@ -342,23 +339,13 @@ public class ClientHandler extends Thread {
     }
 
     /**
-     * Trata o comando EC para atualizacao do valor de um dispositivo.
+     * Trata o comando EC:
+     * 1. Valida casa, permissao e dispositivo.
+     * 2. Envia a chave de seccao cifrada com a chave publica do utilizador.
+     * 3. Recebe o valor cifrado do cliente e guarda-o.
      */
-    private void envioValor(String user, ObjectOutputStream outStream, String[] parts) throws IOException {
-        if (!hasExactArgs(parts, 4)) {
-            sendResponse(outStream, "NOK");
-            return;
-        }
-
-        sendResponse(outStream,
-                deviceManager.envioValor(houseManager, permissionsManager, user, parts[1], parts[2], parts[3]));
-    }
-
-    /**
-     * Trata o comando EC_GET_KEY para enviar a chave de seccao ao cliente para que
-     * este possa cifrar os valores.
-     */
-    private void getSectionKey(String user, ObjectOutputStream outStream, String[] parts) throws IOException {
+    private void envioValor(String user, ObjectInputStream inStream, ObjectOutputStream outStream, String[] parts)
+            throws IOException, ClassNotFoundException {
         if (!hasExactArgs(parts, 3)) {
             sendResponse(outStream, "NOK");
             return;
@@ -368,17 +355,44 @@ public class ClientHandler extends Thread {
         String device = parts[2];
         String section = device.substring(0, 1);
 
-        try {
-            byte[] encryptedSectionKey = permissionsManager.loadSectionKeyForUser(houseName, section, user);
-            if (encryptedSectionKey == null || encryptedSectionKey.length == 0) {
-                sendResponse(outStream, "NOKEY");
-                return;
-            }
-            outStream.writeObject(encryptedSectionKey);
-            outStream.flush();
-        } catch (Exception e) {
-            sendResponse(outStream, "NOK");
+        // Validar casa, permissao e dispositivo antes de enviar a chave
+        String line = houseManager.findHouseLine(houseName);
+        if (line == null) {
+            sendResponse(outStream, "NOHM");
+            return;
         }
+        if (!permissionsManager.hasPermission(houseManager, line, user, section)) {
+            sendResponse(outStream, "NOPERM");
+            return;
+        }
+        if (!deviceManager.deviceExistsInHouse(line, device)) {
+            sendResponse(outStream, "NOD");
+            return;
+        }
+
+        // Carregar chave de seccao cifrada com a chave publica do utilizador
+        byte[] encryptedSectionKey;
+        try {
+            encryptedSectionKey = permissionsManager.loadSectionKeyForUser(houseName, section, user);
+        } catch (Exception e) {
+            sendResponse(outStream, "NOKEY");
+            return;
+        }
+        if (encryptedSectionKey == null || encryptedSectionKey.length == 0) {
+            sendResponse(outStream, "NOKEY");
+            return;
+        }
+
+        // Enviar chave de seccao cifrada ao cliente
+        outStream.writeObject(encryptedSectionKey);
+        outStream.flush();
+
+        // Receber valor cifrado (Base64) do cliente
+        String encryptedValue = (String) inStream.readObject();
+
+        // Guardar e responder (inclui verificacao de integridade e permissoes)
+        sendResponse(outStream,
+                deviceManager.envioValor(houseManager, permissionsManager, user, houseName, device, encryptedValue));
     }
 
     /**
