@@ -46,12 +46,19 @@ public class UserManager {
             throws IOException, ClassNotFoundException {
         int tentativas = 0;
         String passwd;
-        if (!SpertaServer.checkIntegrity(FICHEIRO_USERS)) {
-            System.err.println("NOK-INTEGRITY");
-            System.exit(-1);
-        }
+
+        // Integrity check + user lookup must be atomic with respect to writes
+        // (registerUserIfAbsent also holds userFileLock, so these two ops cannot
+        // interleave with a concurrent write that updates both the file and the hash).
         File file = new File(FICHEIRO_USERS);
-        String[] userData = findUserData(file, user);
+        String[] userData;
+        synchronized (userFileLock) {
+            if (!SpertaServer.checkIntegrity(FICHEIRO_USERS)) {
+                System.err.println("NOK-INTEGRITY");
+                System.exit(-1);
+            }
+            userData = findUserData(file, user);
+        }
 
         if (userData == null) {
             passwd = (String) inStream.readObject();

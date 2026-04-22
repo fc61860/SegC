@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -97,7 +98,7 @@ public class LogManager {
             return null;
         }
         try {
-            byte[] data = SpertaServer.readDecrypted(fileName);
+            byte[] data = Files.readAllBytes(Paths.get(fileName));
             if (data.length == 0)
                 return null;
             String content = new String(data, StandardCharsets.UTF_8);
@@ -245,9 +246,9 @@ public class LogManager {
         }
 
         try {
-            byte[] decryptedLog = SpertaServer.readDecrypted(logPath);
+            byte[] logBytes = Files.readAllBytes(Paths.get(logPath));
 
-            if (decryptedLog.length == 0) {
+            if (logBytes.length == 0) {
                 outStream.writeObject("NODATA");
                 outStream.flush();
                 return;
@@ -256,10 +257,10 @@ public class LogManager {
             outStream.writeObject("OK");
             outStream.flush();
 
-            outStream.writeLong(decryptedLog.length);
+            outStream.writeLong(logBytes.length);
             outStream.flush();
 
-            outStream.write(decryptedLog);
+            outStream.write(logBytes);
             outStream.flush();
 
             sendSectionKeyFile(houseName, device.charAt(0), user, outStream);

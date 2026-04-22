@@ -1,5 +1,7 @@
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -273,12 +275,8 @@ public class DeviceManager {
      * @throws IOException se o ficheiro de log nao puder ser criado
      */
     private void createDeviceLog(String houseName, String device) throws IOException {
-        try {
-            String logPath = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
-            SpertaServer.writeEncrypted(logPath, new byte[0]);
-        } catch (Exception e) {
-            throw new IOException("Erro ao criar log cifrado: " + e.getMessage(), e);
-        }
+        String logPath = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
+        Files.write(Paths.get(logPath), new byte[0]);
     }
 
     /**
@@ -291,16 +289,12 @@ public class DeviceManager {
      */
     private void addLogEntry(String houseName, String device, String value) throws IOException {
         String fileName = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
-        try {
-            byte[] existing = SpertaServer.readDecrypted(fileName);
-            String existingContent = new String(existing, StandardCharsets.UTF_8);
-            LocalDateTime agora = LocalDateTime.now();
-            DateTimeFormatter formatador = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            String newEntry = agora.format(formatador) + ", " + value + "\n";
-            String newContent = existingContent + newEntry;
-            SpertaServer.writeEncrypted(fileName, newContent.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            throw new IOException("Erro ao atualizar log: " + e.getMessage(), e);
-        }
+        byte[] existing = Files.readAllBytes(Paths.get(fileName));
+        String existingContent = new String(existing, StandardCharsets.UTF_8);
+        LocalDateTime agora = LocalDateTime.now();
+        DateTimeFormatter formatador = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String newEntry = agora.format(formatador) + ", " + value + "\n";
+        String newContent = existingContent + newEntry;
+        Files.write(Paths.get(fileName), newContent.getBytes(StandardCharsets.UTF_8));
     }
 }

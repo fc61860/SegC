@@ -92,7 +92,7 @@ public class SpertaServer {
 
         SSLServerSocketFactory sslssf = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
 
-        try (ServerSocket serverSocket = sslssf.createServerSocket(port)) {
+        try (ServerSocket serverSocket = sslssf.createServerSocket(port, 200)) {
             System.out.println("Servidor à escuta na porta: " + port);
 
             while (true) {
