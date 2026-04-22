@@ -159,15 +159,16 @@ public class AuthHandler {
         String keystorePath = System.getProperty("javax.net.ssl.keyStore");
         String keystorePass = System.getProperty("javax.net.ssl.keyStorePassword");
 
-        KeyStore ks = KeyStore.getInstance("JKS");
+        KeyStore ks = KeyStore.getInstance("PKCS12");
         try (FileInputStream fis = new FileInputStream(keystorePath)) {
             ks.load(fis, keystorePass.toCharArray());
         }
 
-        // O alias no keytool tem de ser igual ao nome do user!
-        Certificate cert = ks.getCertificate(user);
+        // Usar o primeiro alias disponivel na keystore
+        String alias = ks.aliases().nextElement();
+        Certificate cert = ks.getCertificate(alias);
         if (cert == null) {
-            throw new Exception("Certificado para o utilizador '" + user + "' não encontrado na keystore!");
+            throw new Exception("Certificado nao encontrado na keystore!");
         }
 
         byte[] certBytes = cert.getEncoded();

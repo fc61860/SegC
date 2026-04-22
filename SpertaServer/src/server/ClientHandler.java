@@ -136,14 +136,14 @@ public class ClientHandler extends Thread {
                 return false;
             }
             if (refJarPath.isEmpty()) {
-                sendResponse(outStream, "NOK");
+                sendResponse(outStream, "NOK-ATTEST");
                 return false;
             }
 
             // Ler bytes do JAR de referencia
             File refJar = new File(refJarPath);
             if (!refJar.exists()) {
-                sendResponse(outStream, "NOK");
+                sendResponse(outStream, "NOK-ATTEST");
                 return false;
             }
             byte[] refJarBytes = Files.readAllBytes(refJar.toPath());
@@ -167,7 +167,7 @@ public class ClientHandler extends Thread {
             String clientHash = (String) inStream.readObject();
             if (!clientHash.equals(expectedHash)) {
                 System.out.println("Atestacao falhou! Hash invalido ou cliente adulterado.");
-                sendResponse(outStream, "NOK");
+                sendResponse(outStream, "NOK-ATTEST");
                 return false;
             }
 

@@ -200,7 +200,7 @@ public class DeviceManager {
                         String deviceName = deviceParts[0];
                         String time = deviceParts[1];
 
-                        if (deviceName.startsWith(place)) {
+                        if (deviceName.equals(place)) {
                             time = newTime;
                             addLogEntry(houseName, deviceName, newTime);
                         }
