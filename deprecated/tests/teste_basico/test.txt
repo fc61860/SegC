@@ -1,0 +1,7 @@
+CREATE casa1
+ADD maria casa1 P
+RD casa1 P
+RD casa1 M
+EC casa1 P1 20
+RT casa1
+RH casa1 P1

@@ -1,0 +1,2 @@
+Meter o server a correr
+Correr um cliente com > teste.txt

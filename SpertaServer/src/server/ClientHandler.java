@@ -416,7 +416,8 @@ public class ClientHandler extends Thread {
             return;
         }
 
-        logManager.receberHistorico(userManager, houseManager, permissionsManager, deviceManager, user, parts[1], parts[2],
+        logManager.receberHistorico(userManager, houseManager, permissionsManager, deviceManager, user, parts[1],
+                parts[2],
                 outStream);
     }
 

@@ -42,7 +42,7 @@ public class FileTransferManager {
                 }
             }
 
-            System.out.println("Guardado como: " + DIRETORIA_DATA + nomeFicheiroLocal);
+            // System.out.println("Guardado como: " + DIRETORIA_DATA + nomeFicheiroLocal);
             return new File(DIRETORIA_DATA + nomeFicheiroLocal);
         } catch (Exception e) {
             System.out.println("Erro ao tentar receber o ficheiro.");
@@ -71,7 +71,7 @@ public class FileTransferManager {
             }
 
             long keySize = inStream.readLong();
-            System.out.println("Server: " + keyStatus + ", " + keySize + " bytes.");
+            // System.out.println("Server: " + keyStatus + ", " + keySize + " bytes.");
 
             String keyFileName = "key_" + nomeFicheiroLocal;
 
@@ -87,7 +87,7 @@ public class FileTransferManager {
                 }
             }
 
-            System.out.println("Key guardada como: " + DIRETORIA_DATA + keyFileName);
+            // System.out.println("Key guardada como: " + DIRETORIA_DATA + keyFileName);
             return new File(DIRETORIA_DATA + keyFileName);
         } catch (Exception e) {
             System.out.println("Erro ao tentar receber o ficheiro.");

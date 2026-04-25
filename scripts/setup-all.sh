@@ -24,25 +24,31 @@ echo "=== Compiling server... ==="
 
 server_classes_dir="SpertaServer/bin/classes"
 server_jar_path="SpertaServer/bin/SpertaServer.jar"
+rm -rf "$server_classes_dir"
 mkdir -p "$server_classes_dir"
+find "SpertaServer/bin" -maxdepth 1 -type f -name '*.class' -delete
+find "SpertaServer/src" -type f -name '*.class' -delete
 
-mapfile -t server_sources < <(find "SpertaServer/src/server" -maxdepth 1 -name '*.java' | sort)
+mapfile -t server_sources < <(find "SpertaServer/src/server" -type f -name '*.java' | sort)
 if [ "${#server_sources[@]}" -eq 0 ]; then
     echo "Nao foram encontrados ficheiros Java do servidor." >&2; exit 1
 fi
 javac -d "$server_classes_dir" "${server_sources[@]}"
 
 rm -f "$server_jar_path"
-(cd "$server_classes_dir" && jar --create --file "../../SpertaServer.jar" --main-class SpertaServer .)
+(cd "$server_classes_dir" && jar --create --file "../SpertaServer.jar" --main-class SpertaServer .)
 
 # ── Compile client ────────────────────────────────────────────────────────────
 echo "=== Compiling client... ==="
 
 classes_dir="SpertaClient/bin/classes"
 jar_path="SpertaClient/bin/SpertaClient.jar"
+rm -rf "$classes_dir"
 mkdir -p "$classes_dir"
+find "SpertaClient/bin" -maxdepth 1 -type f -name '*.class' -delete
+find "SpertaClient/src" -type f -name '*.class' -delete
 
-mapfile -t client_sources < <(find "SpertaClient/src/client" -maxdepth 1 -name '*.java' | sort)
+mapfile -t client_sources < <(find "SpertaClient/src/client" -type f -name '*.java' | sort)
 if [ "${#client_sources[@]}" -eq 0 ]; then
     echo "Nao foram encontrados ficheiros Java do cliente." >&2; exit 1
 fi

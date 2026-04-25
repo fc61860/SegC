@@ -4,6 +4,7 @@
 *.jar
 *.bin
 SpertaServer/data/
+.codex
     
 !tests/**/*.txt
 !tests/**/*.csv

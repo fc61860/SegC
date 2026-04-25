@@ -61,7 +61,8 @@ public class LogManager {
      * @param outStream          stream de saida para enviar o ficheiro ao cliente
      * @throws IOException se ocorrer um erro ao ler ou enviar o ficheiro
      */
-    public void receberHistorico(UserManager userManager, HouseManager houseManager, PermissionsManager permissionsManager,
+    public void receberHistorico(UserManager userManager, HouseManager houseManager,
+            PermissionsManager permissionsManager,
             DeviceManager deviceManager, String user, String houseName, String device, ObjectOutputStream outStream)
             throws IOException {
         String line = houseManager.findHouseLine(houseName);
@@ -203,7 +204,7 @@ public class LogManager {
         }
 
         // Send section keys
-        String[] allSections = {"E", "G", "L", "M", "P", "S"};
+        String[] allSections = { "E", "G", "L", "M", "P", "S" };
         int numKeys = 0;
         for (String s : allSections) {
             File keyFile = new File("SpertaServer/data/key." + houseName + "." + s + "." + user);
@@ -235,7 +236,8 @@ public class LogManager {
      * @param outStream stream de saida para enviar o ficheiro
      * @throws IOException se ocorrer um erro ao abrir ou transmitir o log
      */
-    private void sendLog(UserManager userManager, PermissionsManager permissionsManager, String houseName, String device, String user, ObjectOutputStream outStream) throws IOException {
+    private void sendLog(UserManager userManager, PermissionsManager permissionsManager, String houseName,
+            String device, String user, ObjectOutputStream outStream) throws IOException {
         String logPath = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
         File log = new File(logPath);
 

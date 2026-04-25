@@ -128,7 +128,7 @@ public class PermissionsManager {
                     createSectionKeyFiles(houseName, user, "all");
                     updatedUsers.add(user + ":all");
                 } else if (currentPerms.equals("all")) {
-                    //so a nova
+                    // so a nova
                     deleteKeyFilesExcept(houseName, user, newPerm);
                     updatedUsers.add(user + ":" + newPerm);
                 } else {
