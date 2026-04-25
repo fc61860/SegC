@@ -1,8 +1,9 @@
 #!/bin/bash
 # Limpa ficheiros gerados e compilados que não devem ir no .zip
 # Mantém: código-fonte, JARs, keystores, README
+# Mantém: SpertaServer/data/SpertaClient.jar e client_attestation.txt (necessários para atestação)
 
-echo "=== Limpando para entrega ==="
+echo "=== Limpando para entrega ===" 
 
 # Remove ficheiros compilados
 echo "Removendo .classes..."
@@ -19,19 +20,17 @@ rm -f SpertaServer/data/casas.txt.hash
 rm -f SpertaServer/data/estados.txt
 rm -f SpertaServer/data/estados.txt.hash
 rm -f SpertaServer/data/online_users.txt
-rm -f SpertaServer/data/client_attestation.txt
-rm -f SpertaServer/data/client_attestation.txt.hash
-rm -f SpertaServer/data/SpertaClient.jar
 rm -rf SpertaServer/data/logs/
-rm -f SpertaServer/data/*.cer
+find SpertaServer/data -maxdepth 1 -name '*.cer' -type f -delete
 
 # Remove chaves de secção de utilizadores
 echo "Removendo chaves de secção..."
-rm -f SpertaServer/data/key.*
+find SpertaServer/data -maxdepth 1 -name 'key.*' -type f -delete
 
 # Remove dados do cliente
 echo "Removendo dados do cliente..."
 rm -rf SpertaClient/data/
 
-echo "=== Limpeza concluída ==="
+echo "=== Limpeza concluída ===" 
 echo "Mantém: código-fonte, JARs, keystores, README"
+echo "Mantém: SpertaServer/data/SpertaClient.jar + client_attestation.txt (atestação)"
