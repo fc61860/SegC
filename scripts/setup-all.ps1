@@ -3,9 +3,10 @@ $ErrorActionPreference = 'Stop'
 # ── Reset data ────────────────────────────────────────────────────────────────
 Write-Host "=== Resetting data... ===" -ForegroundColor Cyan
 
-$dataDir      = 'SpertaServer/data'
-$logsDir      = Join-Path $dataDir 'logs'
+$dataDir       = 'SpertaServer/data'
+$logsDir       = Join-Path $dataDir 'logs'
 $clientDataDir = 'SpertaClient/data'
+$serverSaltFile = 'SpertaServer/salt.bin'
 
 foreach ($dir in @($dataDir, $logsDir, $clientDataDir)) {
     $null = New-Item -ItemType Directory -Path $dir -Force
@@ -15,6 +16,7 @@ foreach ($name in @('users.txt','casas.txt','estados.txt','online_users.txt')) {
     $f = Join-Path $dataDir $name
     if (Test-Path $f) { Remove-Item $f -Force }
 }
+Remove-Item $serverSaltFile -Force -ErrorAction SilentlyContinue
 
 Get-ChildItem $logsDir      -File                         | Remove-Item -Force
 Get-ChildItem $clientDataDir -File                        | Remove-Item -Force
@@ -27,45 +29,51 @@ Get-ChildItem $dataDir -Filter '*.hash' -File -ErrorAction SilentlyContinue | Re
 Write-Host "=== Compiling server... ===" -ForegroundColor Cyan
 
 $serverClassesDir = 'SpertaServer/bin/classes'
-$serverJarPath = 'SpertaServer/bin/SpertaServer.jar'
-$null = New-Item -ItemType Directory -Path $serverClassesDir -Force
-$null = New-Item -ItemType Directory -Path 'SpertaServer/bin' -Force
+$serverJarPath    = 'SpertaServer/bin/SpertaServer.jar'
 
-$serverSources = Get-ChildItem 'SpertaServer/src/server/*.java' | ForEach-Object { $_.FullName }
-if (-not $serverSources) { throw 'Nao foram encontrados ficheiros Java do servidor.' }
+if (Test-Path $serverJarPath) {
+    Write-Host "=== Server JAR already exists, skipping compilation ===" -ForegroundColor Yellow
+} else {
+    $null = New-Item -ItemType Directory -Path $serverClassesDir -Force
+    $null = New-Item -ItemType Directory -Path 'SpertaServer/bin' -Force
 
-& javac -d $serverClassesDir @serverSources
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $serverSources = Get-ChildItem 'SpertaServer/src/server/' -Recurse -Filter '*.java' | ForEach-Object { $_.FullName }
+    if (-not $serverSources) { throw 'Nao foram encontrados ficheiros Java do servidor.' }
 
-if (Test-Path $serverJarPath) { Remove-Item $serverJarPath -Force }
+    & javac --release 21 -d $serverClassesDir @serverSources
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Push-Location $serverClassesDir
-& jar --create --file '..\SpertaServer.jar' --main-class 'SpertaServer' .
-$jarExit = $LASTEXITCODE
-Pop-Location
-if ($jarExit -ne 0) { exit $jarExit }
+    Push-Location $serverClassesDir
+    & jar --create --file '..\SpertaServer.jar' --main-class 'SpertaServer' .
+    $jarExit = $LASTEXITCODE
+    Pop-Location
+    if ($jarExit -ne 0) { exit $jarExit }
+}
 
 # ── Compile client ────────────────────────────────────────────────────────────
 Write-Host "=== Compiling client... ===" -ForegroundColor Cyan
 
 $classesDir = 'SpertaClient/bin/classes'
 $jarPath    = 'SpertaClient/bin/SpertaClient.jar'
-$null = New-Item -ItemType Directory -Path $classesDir -Force
-$null = New-Item -ItemType Directory -Path 'SpertaClient/bin' -Force
 
-$clientSources = Get-ChildItem 'SpertaClient/src/client/*.java' | ForEach-Object { $_.FullName }
-if (-not $clientSources) { throw 'Nao foram encontrados ficheiros Java do cliente.' }
+if (Test-Path $jarPath) {
+    Write-Host "=== Client JAR already exists, skipping compilation ===" -ForegroundColor Yellow
+} else {
+    $null = New-Item -ItemType Directory -Path $classesDir -Force
+    $null = New-Item -ItemType Directory -Path 'SpertaClient/bin' -Force
 
-& javac -d $classesDir @clientSources
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $clientSources = Get-ChildItem 'SpertaClient/src/client/' -Recurse -Filter '*.java' | ForEach-Object { $_.FullName }
+    if (-not $clientSources) { throw 'Nao foram encontrados ficheiros Java do cliente.' }
 
-if (Test-Path $jarPath) { Remove-Item $jarPath -Force }
+    & javac --release 21 -d $classesDir @clientSources
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Push-Location $classesDir
-& jar --create --file '..\SpertaClient.jar' --main-class 'SpertaClient.src.client.SpertaClient' .
-$jarExit = $LASTEXITCODE
-Pop-Location
-if ($jarExit -ne 0) { exit $jarExit }
+    Push-Location $classesDir
+    & jar --create --file '..\SpertaClient.jar' --main-class 'SpertaClient.src.client.SpertaClient' .
+    $jarExit = $LASTEXITCODE
+    Pop-Location
+    if ($jarExit -ne 0) { exit $jarExit }
+}
 
 # ── Update client attestation ─────────────────────────────────────────────────
 Write-Host "=== Updating client attestation... ===" -ForegroundColor Cyan

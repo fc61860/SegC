@@ -1,5 +1,6 @@
 # Limpa ficheiros gerados e compilados que não devem ir no .zip
 # Mantém: código-fonte, JARs, keystores, README
+# Mantém: SpertaServer/data/SpertaClient.jar e client_attestation.txt (necessários para atestação)
 
 Write-Host "=== Limpando para entrega ===" -ForegroundColor Green
 
@@ -18,9 +19,6 @@ Remove-Item -Force "SpertaServer/data/casas.txt.hash" -ErrorAction SilentlyConti
 Remove-Item -Force "SpertaServer/data/estados.txt" -ErrorAction SilentlyContinue
 Remove-Item -Force "SpertaServer/data/estados.txt.hash" -ErrorAction SilentlyContinue
 Remove-Item -Force "SpertaServer/data/online_users.txt" -ErrorAction SilentlyContinue
-Remove-Item -Force "SpertaServer/data/client_attestation.txt" -ErrorAction SilentlyContinue
-Remove-Item -Force "SpertaServer/data/client_attestation.txt.hash" -ErrorAction SilentlyContinue
-Remove-Item -Force "SpertaServer/data/SpertaClient.jar" -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force "SpertaServer/data/logs/" -ErrorAction SilentlyContinue
 Remove-Item -Force "SpertaServer/data/*.cer" -ErrorAction SilentlyContinue
 
@@ -43,3 +41,4 @@ Remove-Item -Recurse -Force "SpertaClient/data/" -ErrorAction SilentlyContinue
 Write-Host "=== Limpeza concluída ===" -ForegroundColor Green
 Write-Host ""
 Write-Host "Mantém: código-fonte, JARs, keystores, README" -ForegroundColor Cyan
+Write-Host "Mantém: SpertaServer/data/SpertaClient.jar + client_attestation.txt (atestação)" -ForegroundColor Cyan

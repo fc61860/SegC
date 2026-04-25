@@ -72,6 +72,8 @@ COMPILAR E CONFIGURAR (a partir da raiz do projeto)
 
 Windows (PowerShell):
   .\scripts\setup-all.ps1
+  Ou execute com bypass de política:
+  powershell -ExecutionPolicy Bypass -File .\scripts\setup-all.ps1
 
 Linux/macOS (Bash):
   chmod +x scripts/setup-all.sh
@@ -82,9 +84,7 @@ Este script executa os seguintes passos:
   2. Compila o servidor  -> SpertaServer/bin/classes/ + SpertaServer/bin/SpertaServer.jar
   3. Compila o cliente   -> SpertaClient/bin/classes/ + SpertaClient/bin/SpertaClient.jar
   4. Copia o JAR do cliente para SpertaServer/data/SpertaClient.jar (referência de atestação)
-     e escreve o caminho em SpertaServer/data/client_attestation.txt
-
-------------------------------------------------------------------------
+     e escreve o caminho em SpertaServer/data/client_attestation.txt------------------------------------------------------------------------
 EXECUTAR O SERVIDOR
 ------------------------------------------------------------------------
 
@@ -150,10 +150,24 @@ NOTA: O <userName> deve corresponder ao alias na keystore (client1, client2, cli
       Após setup-all não há utilizadores registados, por isso qualquer
       password funciona na primeira ligação.
 
+NOTA SOBRE TESTAR EM DUAS MÁQUINAS:
+      Trocar -ServerAddress (no cliente) para o IP/hostname
+      correto da máquina onde o servidor está a rodar.
+      
+      Exemplo:
+      - Servidor roda em máquina com IP 192.167.1.200
+      - Cliente numa outra máquina deve usar:
+        -ServerAddress "192.167.1.200:22345"
+      
+      Usar "127.0.0.1:22345" apenas quando servidor e cliente estão
+      na mesma máquina.
+
 ------------------------------------------------------------------------
-LIMITAÇÕES DP PROJETO
+LIMITAÇÕES DO PROJETO
 ------------------------------------------------------------------------
-- O número de clientes ativos simultaneamente é restrito definido no backlog 
-ao criar o Server Socket na classe SpertaServer.
+- O backlog do ServerSocket está configurado para 200 conexões pendentes.
+  Isto limita o número de clientes que podem tentar conectar simultaneamente
+  enquanto aguardam aceitação pelo servidor. Se mais de 200 clientes tentarem
+  conectar ao mesmo tempo, as conexões podem ser rejeitadas.
 
 ================================================================================

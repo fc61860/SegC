@@ -40,7 +40,6 @@ public class ClientHandler extends Thread {
         this.deviceManager = deviceManager;
         this.permissionsManager = permissionsManager;
         this.logManager = logManager;
-        System.out.println("thread do server para cada cliente");
     }
 
     /**
