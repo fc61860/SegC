@@ -58,6 +58,10 @@ public class ClientHandler extends Thread {
             }
 
             user = (String) inStream.readObject();
+            if (!ValidationUtils.isValidUserOrHouse(user)) {
+                sendResponse(outStream, "NOK");
+                return;
+            }
             if (userManager.isUserOnlinePublic(user)) {
                 sendResponse(outStream, "USERON");
                 return;
@@ -232,6 +236,10 @@ public class ClientHandler extends Thread {
         }
 
         String hm = parts[1];
+        if (!ValidationUtils.isValidUserOrHouse(hm)) {
+            sendResponse(outStream, "NOK");
+            return;
+        }
         String resultado = houseManager.criarCasa(user, hm);
         sendResponse(outStream, resultado);
 
@@ -244,8 +252,12 @@ public class ClientHandler extends Thread {
         String[] sections = { "E", "G", "L", "M", "P", "S" };
         for (String s : sections) {
             byte[] encryptedKey = (byte[]) inStream.readObject();
-            String keyPath = "SpertaServer/data/key." + hm + "." + s + "." + user;
-            Files.write(new File(keyPath).toPath(), encryptedKey);
+            try {
+                permissionsManager.saveSectionKeyForUser(hm, s, user, encryptedKey);
+            } catch (Exception e) {
+                sendResponse(outStream, "NOK");
+                return;
+            }
         }
 
         sendResponse(outStream, "OK");
@@ -268,6 +280,11 @@ public class ClientHandler extends Thread {
         String targetUser = parts[1];
         String houseName = parts[2];
         String permission = parts[3];
+        if (!ValidationUtils.isValidUserOrHouse(targetUser) || !ValidationUtils.isValidUserOrHouse(houseName)
+                || !ValidationUtils.isValidSection(permission)) {
+            sendResponse(outStream, "NOK");
+            return;
+        }
 
         // Passo 1: validar permissoes
         String validationResult = permissionsManager.adicionarUtilizador(userManager, houseManager, user, targetUser,
@@ -353,6 +370,10 @@ public class ClientHandler extends Thread {
 
         String houseName = parts[1];
         String device = parts[2];
+        if (!ValidationUtils.isValidUserOrHouse(houseName) || !ValidationUtils.isValidDeviceId(device)) {
+            sendResponse(outStream, "NOK");
+            return;
+        }
         String section = device.substring(0, 1);
 
         // Validar casa, permissao e dispositivo antes de enviar a chave

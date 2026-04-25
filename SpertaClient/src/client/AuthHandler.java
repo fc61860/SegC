@@ -45,6 +45,10 @@ public class AuthHandler {
                 System.out.println("USER ALREADY ONLINE");
                 return false;
             }
+            if (!"OK".equals(userOn)) {
+                System.out.println("Login rejected by server.");
+                return false;
+            }
 
             return performLogin(user, pass, sc, outStream, inStream);
         } catch (Exception e) {

@@ -11,6 +11,7 @@ import java.util.Set;
  * Gere atribuicoes e verificacoes de permissoes sobre secoes de uma casa.
  */
 public class PermissionsManager {
+    private static final String DIRETORIA_DATA = "SpertaServer/data/";
     private static final Set<String> VALID_PERMS = Set.of("E", "G", "L", "M", "P", "S", "all");
 
     /**
@@ -173,10 +174,11 @@ public class PermissionsManager {
                     : new String[] { permission };
 
             for (String section : sections) {
-                File keyFile = new File("SpertaServer/data/key." + houseName + "." + section + "." + user);
+                File keyFile = new File(buildKeyPath(houseName, section, user));
                 if (!keyFile.exists()) {
                     // Criar ficheiro vazio que sera preenchido com a chave cifrada depois
                     Files.write(keyFile.toPath(), new byte[0]);
+                    SpertaServer.saveHashFile(keyFile.getPath());
                 }
             }
         } catch (Exception e) {
@@ -199,31 +201,33 @@ public class PermissionsManager {
     private void updatePermissions(HouseManager houseManager, String houseName, String targetUser,
             String newPermissions)
             throws IOException {
-        try {
-            byte[] data = SpertaServer.readDecrypted(houseManager.getCasasFile().getPath());
-            String content = new String(data, StandardCharsets.UTF_8);
-            String[] rawLines = content.split("\\r?\\n", -1);
-            List<String> lines = new ArrayList<>();
-            for (String l : rawLines) {
-                if (!l.isEmpty())
-                    lines.add(l);
-            }
-
-            for (int i = 0; i < lines.size(); i++) {
-                String line = lines.get(i);
-                String[] parts = houseManager.splitHouseLine(line);
-                if (parts[0].equals(houseName)) {
-                    parts[2] = addPermission(parts[2], targetUser, newPermissions, houseName);
-                    lines.set(i, String.join(";", parts));
-                    break;
+        synchronized (StorageLocks.DATA_LOCK) {
+            try {
+                byte[] data = SpertaServer.readDecrypted(houseManager.getCasasFile().getPath());
+                String content = new String(data, StandardCharsets.UTF_8);
+                String[] rawLines = content.split("\\r?\\n", -1);
+                List<String> lines = new ArrayList<>();
+                for (String l : rawLines) {
+                    if (!l.isEmpty())
+                        lines.add(l);
                 }
-            }
 
-            String newContent = String.join("\n", lines) + "\n";
-            SpertaServer.writeEncrypted(houseManager.getCasasFile().getPath(),
-                    newContent.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            throw new IOException("Erro ao atualizar permissoes: " + e.getMessage(), e);
+                for (int i = 0; i < lines.size(); i++) {
+                    String line = lines.get(i);
+                    String[] parts = houseManager.splitHouseLine(line);
+                    if (parts[0].equals(houseName)) {
+                        parts[2] = addPermission(parts[2], targetUser, newPermissions, houseName);
+                        lines.set(i, String.join(";", parts));
+                        break;
+                    }
+                }
+
+                String newContent = String.join("\n", lines) + "\n";
+                SpertaServer.writeEncrypted(houseManager.getCasasFile().getPath(),
+                        newContent.getBytes(StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                throw new IOException("Erro ao atualizar permissoes: " + e.getMessage(), e);
+            }
         }
     }
 
@@ -237,9 +241,17 @@ public class PermissionsManager {
      * @throws Exception se ocorrer erro ao ler o ficheiro
      */
     public byte[] loadSectionKeyForUser(String houseName, String section, String user) throws Exception {
-        File keyFile = new File("SpertaServer/data/key." + houseName + "." + section + "." + user);
+        if (!ValidationUtils.isValidUserOrHouse(houseName) || !ValidationUtils.isValidSection(section)
+                || !ValidationUtils.isValidUserOrHouse(user)) {
+            return null;
+        }
+        File keyFile = new File(buildKeyPath(houseName, section, user));
         if (!keyFile.exists()) {
             return null;
+        }
+        if (!SpertaServer.checkIntegrity(keyFile.getPath())) {
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
         }
         return Files.readAllBytes(keyFile.toPath());
     }
@@ -255,8 +267,13 @@ public class PermissionsManager {
      */
     public void saveSectionKeyForUser(String houseName, String section, String user, byte[] encryptedKey)
             throws Exception {
-        File keyFile = new File("SpertaServer/data/key." + houseName + "." + section + "." + user);
+        if (!ValidationUtils.isValidUserOrHouse(houseName) || !ValidationUtils.isValidSection(section)
+                || !ValidationUtils.isValidUserOrHouse(user)) {
+            throw new IOException("Identificador invalido");
+        }
+        File keyFile = new File(buildKeyPath(houseName, section, user));
         Files.write(keyFile.toPath(), encryptedKey);
+        SpertaServer.saveHashFile(keyFile.getPath());
     }
 
     /**
@@ -280,7 +297,7 @@ public class PermissionsManager {
                 continue;
             }
 
-            File keyFile = new File("SpertaServer/data/key." + houseName + "." + section + "." + user);
+            File keyFile = new File(buildKeyPath(houseName, section, user));
 
             if (keyFile.exists()) {
                 boolean deleted = keyFile.delete();
@@ -288,6 +305,14 @@ public class PermissionsManager {
                     System.out.println("Failed to delete: " + keyFile.getName());
                 }
             }
+            File hashFile = new File(keyFile.getPath() + ".hash");
+            if (hashFile.exists()) {
+                hashFile.delete();
+            }
         }
+    }
+
+    private static String buildKeyPath(String houseName, String section, String user) {
+        return DIRETORIA_DATA + "key." + houseName + "." + section + "." + user;
     }
 }

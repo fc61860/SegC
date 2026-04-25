@@ -7,10 +7,12 @@ echo "=== Resetting data... ==="
 data_dir="SpertaServer/data"
 logs_dir="$data_dir/logs"
 client_data_dir="SpertaClient/data"
+server_salt_file="SpertaServer/salt.bin"
 
 mkdir -p "$data_dir" "$logs_dir" "$client_data_dir"
 
 rm -f "$data_dir/users.txt" "$data_dir/casas.txt" "$data_dir/estados.txt" "$data_dir/online_users.txt"
+rm -f "$server_salt_file"
 
 find "$data_dir" -maxdepth 1 -name 'key.*'  -type f -delete
 find "$data_dir" -maxdepth 1 -name '*.cer'  -type f -delete

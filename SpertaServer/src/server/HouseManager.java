@@ -20,23 +20,20 @@ public class HouseManager {
      * @throws IOException se ocorrer um erro ao persistir a nova casa
      */
     public String criarCasa(String user, String houseName) throws IOException {
-        if (houseName == null || houseName.contains(";")) {
-            return "NOK";
-        }
-
-        if (findHouseLine(houseName) != null) {
-            return "NOK";
-        }
-
-        try {
-            byte[] existing = SpertaServer.readDecrypted(FICHEIRO_CASAS);
-            String existingContent = new String(existing, StandardCharsets.UTF_8);
-            String newLine = houseName + ";" + user + ";;";
-            byte[] newContent = (existingContent + newLine + "\n").getBytes(StandardCharsets.UTF_8);
-            SpertaServer.writeEncrypted(FICHEIRO_CASAS, newContent);
-        } catch (Exception e) {
-            System.err.println("Erro ao cifrar casas.txt: " + e.getMessage());
-            return "NOK";
+        synchronized (StorageLocks.DATA_LOCK) {
+            if (findHouseLine(houseName) != null) {
+                return "NOK";
+            }
+            try {
+                byte[] existing = SpertaServer.readDecrypted(FICHEIRO_CASAS);
+                String existingContent = new String(existing, StandardCharsets.UTF_8);
+                String newLine = houseName + ";" + user + ";;";
+                byte[] newContent = (existingContent + newLine + "\n").getBytes(StandardCharsets.UTF_8);
+                SpertaServer.writeEncrypted(FICHEIRO_CASAS, newContent);
+            } catch (Exception e) {
+                System.err.println("Erro ao cifrar casas.txt: " + e.getMessage());
+                return "NOK";
+            }
         }
 
         return "OK";
@@ -50,20 +47,22 @@ public class HouseManager {
      * @throws IOException se ocorrer um erro ao ler o ficheiro de casas
      */
     public String findHouseLine(String houseName) throws IOException {
-        try {
-            byte[] content = SpertaServer.readDecrypted(FICHEIRO_CASAS);
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(new ByteArrayInputStream(content), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String[] parts = splitHouseLine(line);
-                    if (parts[0].equals(houseName)) {
-                        return line;
+        synchronized (StorageLocks.DATA_LOCK) {
+            try {
+                byte[] content = SpertaServer.readDecrypted(FICHEIRO_CASAS);
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(new ByteArrayInputStream(content), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        String[] parts = splitHouseLine(line);
+                        if (parts[0].equals(houseName)) {
+                            return line;
+                        }
                     }
                 }
+            } catch (Exception e) {
+                throw new IOException("Erro ao ler casas.txt: " + e.getMessage(), e);
             }
-        } catch (Exception e) {
-            throw new IOException("Erro ao ler casas.txt: " + e.getMessage(), e);
         }
         return null;
     }

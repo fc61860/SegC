@@ -29,19 +29,20 @@ public class DeviceManager {
      */
     public String registarDispositivo(HouseManager houseManager, String user, String houseName, String section)
             throws IOException {
-        if (!VALID_SECS.contains(section)) {
+        if (!ValidationUtils.isValidUserOrHouse(user) || !ValidationUtils.isValidUserOrHouse(houseName)
+                || !ValidationUtils.isValidSection(section) || !VALID_SECS.contains(section)) {
             return "NOK";
         }
-
-        String line = houseManager.findHouseLine(houseName);
-        if (line == null) {
-            return "NOHM";
+        synchronized (StorageLocks.DATA_LOCK) {
+            String line = houseManager.findHouseLine(houseName);
+            if (line == null) {
+                return "NOHM";
+            }
+            if (!houseManager.isOwner(line, user)) {
+                return "NOPERM";
+            }
+            addDevice(houseManager, houseName, section);
         }
-        if (!houseManager.isOwner(line, user)) {
-            return "NOPERM";
-        }
-
-        addDevice(houseManager, houseName, section);
         return "OK";
     }
 
@@ -61,23 +62,29 @@ public class DeviceManager {
      */
     public String envioValor(HouseManager houseManager, PermissionsManager permissionsManager, String user,
             String houseName, String device, String rawValue) throws IOException {
+        if (!ValidationUtils.isValidUserOrHouse(user) || !ValidationUtils.isValidUserOrHouse(houseName)
+                || !ValidationUtils.isValidDeviceId(device)) {
+            return "NOK";
+        }
 
         if (!SpertaServer.checkIntegrityEncrypted(FICHEIRO_ESTADOS)) {
             System.err.println("NOK-INTEGRITY");
             System.exit(-1);
         }
-        String line = houseManager.findHouseLine(houseName);
-        if (line == null) {
-            return "NOHM";
-        }
-        if (!permissionsManager.hasPermission(houseManager, line, user, device.substring(0, 1))) {
-            return "NOPERM";
-        }
-        if (!deviceExistsInHouse(line, device)) {
-            return "NOD";
-        }
+        synchronized (StorageLocks.DATA_LOCK) {
+            String line = houseManager.findHouseLine(houseName);
+            if (line == null) {
+                return "NOHM";
+            }
+            if (!permissionsManager.hasPermission(houseManager, line, user, device.substring(0, 1))) {
+                return "NOPERM";
+            }
+            if (!deviceExistsInHouse(line, device)) {
+                return "NOD";
+            }
 
-        updatePlaceTimeInHouse(houseName, device, rawValue);
+            updatePlaceTimeInHouse(houseName, device, rawValue);
+        }
         return "OK";
     }
 
@@ -139,35 +146,37 @@ public class DeviceManager {
      * @throws IOException se ocorrer um erro ao reescrever a persistencia
      */
     private void addDevice(HouseManager houseManager, String houseName, String place) throws IOException {
-        try {
-            byte[] data = SpertaServer.readDecrypted(houseManager.getCasasFile().getPath());
-            String content = new String(data, StandardCharsets.UTF_8);
-            String[] rawLines = content.split("\\r?\\n", -1);
-            List<String> lines = new ArrayList<>();
-            for (String l : rawLines) {
-                if (!l.isEmpty())
-                    lines.add(l);
-            }
-
-            for (int i = 0; i < lines.size(); i++) {
-                String line = lines.get(i);
-                String[] parts = houseManager.splitHouseLine(line);
-                if (parts[0].equals(houseName)) {
-                    String devices = parts[3].trim();
-                    String newDevice = nextDevice(devices, place);
-                    addDeviceWithDefaultTime(houseName, newDevice);
-                    createDeviceLog(houseName, newDevice);
-                    parts[3] = devices.isEmpty() ? newDevice : devices + ", " + newDevice;
-                    lines.set(i, String.join(";", parts));
-                    break;
+        synchronized (StorageLocks.DATA_LOCK) {
+            try {
+                byte[] data = SpertaServer.readDecrypted(houseManager.getCasasFile().getPath());
+                String content = new String(data, StandardCharsets.UTF_8);
+                String[] rawLines = content.split("\\r?\\n", -1);
+                List<String> lines = new ArrayList<>();
+                for (String l : rawLines) {
+                    if (!l.isEmpty())
+                        lines.add(l);
                 }
-            }
 
-            String newContent = String.join("\n", lines) + "\n";
-            SpertaServer.writeEncrypted(houseManager.getCasasFile().getPath(),
-                    newContent.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            throw new IOException("Erro ao registar dispositivo: " + e.getMessage(), e);
+                for (int i = 0; i < lines.size(); i++) {
+                    String line = lines.get(i);
+                    String[] parts = houseManager.splitHouseLine(line);
+                    if (parts[0].equals(houseName)) {
+                        String devices = parts[3].trim();
+                        String newDevice = nextDevice(devices, place);
+                        addDeviceWithDefaultTime(houseName, newDevice);
+                        createDeviceLog(houseName, newDevice);
+                        parts[3] = devices.isEmpty() ? newDevice : devices + ", " + newDevice;
+                        lines.set(i, String.join(";", parts));
+                        break;
+                    }
+                }
+
+                String newContent = String.join("\n", lines) + "\n";
+                SpertaServer.writeEncrypted(houseManager.getCasasFile().getPath(),
+                        newContent.getBytes(StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                throw new IOException("Erro ao registar dispositivo: " + e.getMessage(), e);
+            }
         }
     }
 
@@ -181,46 +190,48 @@ public class DeviceManager {
      * @throws IOException se ocorrer um erro ao atualizar estados ou logs
      */
     private void updatePlaceTimeInHouse(String houseName, String place, String newTime) throws IOException {
-        try {
-            byte[] data = SpertaServer.readDecrypted(FICHEIRO_ESTADOS);
-            String content = new String(data, StandardCharsets.UTF_8);
-            String[] rawLines = content.split("\\r?\\n", -1);
-            List<String> lines = new ArrayList<>();
-            for (String l : rawLines) {
-                if (!l.isEmpty())
-                    lines.add(l);
-            }
-
-            for (int i = 0; i < lines.size(); i++) {
-                String line = lines.get(i);
-                String[] parts = line.split(";");
-                if (parts[0].trim().equals(houseName)) {
-                    String[] devList = parts[1].split(",");
-                    StringBuilder updatedDevices = new StringBuilder();
-                    for (int j = 0; j < devList.length; j++) {
-                        String[] deviceParts = devList[j].trim().split(":");
-                        String deviceName = deviceParts[0];
-                        String time = deviceParts[1];
-
-                        if (deviceName.equals(place)) {
-                            time = newTime;
-                            addLogEntry(houseName, deviceName, newTime);
-                        }
-
-                        updatedDevices.append(deviceName).append(":").append(time);
-                        if (j < devList.length - 1) {
-                            updatedDevices.append(", ");
-                        }
-                    }
-                    lines.set(i, houseName + "; " + updatedDevices);
-                    break;
+        synchronized (StorageLocks.DATA_LOCK) {
+            try {
+                byte[] data = SpertaServer.readDecrypted(FICHEIRO_ESTADOS);
+                String content = new String(data, StandardCharsets.UTF_8);
+                String[] rawLines = content.split("\\r?\\n", -1);
+                List<String> lines = new ArrayList<>();
+                for (String l : rawLines) {
+                    if (!l.isEmpty())
+                        lines.add(l);
                 }
-            }
 
-            String newContent = String.join("\n", lines) + "\n";
-            SpertaServer.writeEncrypted(FICHEIRO_ESTADOS, newContent.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            throw new IOException("Erro ao atualizar estados: " + e.getMessage(), e);
+                for (int i = 0; i < lines.size(); i++) {
+                    String line = lines.get(i);
+                    String[] parts = line.split(";");
+                    if (parts[0].trim().equals(houseName)) {
+                        String[] devList = parts[1].split(",");
+                        StringBuilder updatedDevices = new StringBuilder();
+                        for (int j = 0; j < devList.length; j++) {
+                            String[] deviceParts = devList[j].trim().split(":");
+                            String deviceName = deviceParts[0];
+                            String time = deviceParts[1];
+
+                            if (deviceName.equals(place)) {
+                                time = newTime;
+                                addLogEntry(houseName, deviceName, newTime);
+                            }
+
+                            updatedDevices.append(deviceName).append(":").append(time);
+                            if (j < devList.length - 1) {
+                                updatedDevices.append(", ");
+                            }
+                        }
+                        lines.set(i, houseName + "; " + updatedDevices);
+                        break;
+                    }
+                }
+
+                String newContent = String.join("\n", lines) + "\n";
+                SpertaServer.writeEncrypted(FICHEIRO_ESTADOS, newContent.getBytes(StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                throw new IOException("Erro ao atualizar estados: " + e.getMessage(), e);
+            }
         }
     }
 
@@ -233,37 +244,39 @@ public class DeviceManager {
      * @throws IOException se ocorrer um erro ao atualizar o ficheiro de estados
      */
     private void addDeviceWithDefaultTime(String houseName, String device) throws IOException {
-        try {
-            byte[] data = SpertaServer.readDecrypted(FICHEIRO_ESTADOS);
-            String content = new String(data, StandardCharsets.UTF_8);
-            String[] rawLines = content.split("\\r?\\n", -1);
-            List<String> lines = new ArrayList<>();
-            for (String l : rawLines) {
-                if (!l.isEmpty())
-                    lines.add(l);
-            }
-
-            boolean houseFound = false;
-            for (int i = 0; i < lines.size(); i++) {
-                String line = lines.get(i);
-                String[] parts = line.split(";", -1);
-                if (parts[0].trim().equals(houseName)) {
-                    houseFound = true;
-                    String devices = parts.length > 1 ? parts[1].trim() : "";
-                    devices = devices.isEmpty() ? device + ":0" : devices + ", " + device + ":0";
-                    lines.set(i, parts[0] + ";" + devices);
-                    break;
+        synchronized (StorageLocks.DATA_LOCK) {
+            try {
+                byte[] data = SpertaServer.readDecrypted(FICHEIRO_ESTADOS);
+                String content = new String(data, StandardCharsets.UTF_8);
+                String[] rawLines = content.split("\\r?\\n", -1);
+                List<String> lines = new ArrayList<>();
+                for (String l : rawLines) {
+                    if (!l.isEmpty())
+                        lines.add(l);
                 }
-            }
 
-            if (!houseFound) {
-                lines.add(houseName + ";" + device + ":0");
-            }
+                boolean houseFound = false;
+                for (int i = 0; i < lines.size(); i++) {
+                    String line = lines.get(i);
+                    String[] parts = line.split(";", -1);
+                    if (parts[0].trim().equals(houseName)) {
+                        houseFound = true;
+                        String devices = parts.length > 1 ? parts[1].trim() : "";
+                        devices = devices.isEmpty() ? device + ":0" : devices + ", " + device + ":0";
+                        lines.set(i, parts[0] + ";" + devices);
+                        break;
+                    }
+                }
 
-            String newContent = String.join("\n", lines) + "\n";
-            SpertaServer.writeEncrypted(FICHEIRO_ESTADOS, newContent.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            throw new IOException("Erro ao atualizar estados.txt: " + e.getMessage(), e);
+                if (!houseFound) {
+                    lines.add(houseName + ";" + device + ":0");
+                }
+
+                String newContent = String.join("\n", lines) + "\n";
+                SpertaServer.writeEncrypted(FICHEIRO_ESTADOS, newContent.getBytes(StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                throw new IOException("Erro ao atualizar estados.txt: " + e.getMessage(), e);
+            }
         }
     }
 
@@ -276,7 +289,14 @@ public class DeviceManager {
      */
     private void createDeviceLog(String houseName, String device) throws IOException {
         String logPath = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
-        Files.write(Paths.get(logPath), new byte[0]);
+        synchronized (StorageLocks.DATA_LOCK) {
+            try {
+                Files.write(Paths.get(logPath), new byte[0]);
+                SpertaServer.saveHashFile(logPath);
+            } catch (Exception e) {
+                throw new IOException("Erro ao criar log: " + e.getMessage(), e);
+            }
+        }
     }
 
     /**
@@ -289,12 +309,23 @@ public class DeviceManager {
      */
     private void addLogEntry(String houseName, String device, String value) throws IOException {
         String fileName = DIRETORIA_LOGS + houseName + "_" + device + ".csv";
-        byte[] existing = Files.readAllBytes(Paths.get(fileName));
-        String existingContent = new String(existing, StandardCharsets.UTF_8);
-        LocalDateTime agora = LocalDateTime.now();
-        DateTimeFormatter formatador = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        String newEntry = agora.format(formatador) + ", " + value + "\n";
-        String newContent = existingContent + newEntry;
-        Files.write(Paths.get(fileName), newContent.getBytes(StandardCharsets.UTF_8));
+        synchronized (StorageLocks.DATA_LOCK) {
+            try {
+                if (!SpertaServer.checkIntegrity(fileName)) {
+                    System.err.println("NOK-INTEGRITY");
+                    System.exit(-1);
+                }
+                byte[] existing = Files.readAllBytes(Paths.get(fileName));
+                String existingContent = new String(existing, StandardCharsets.UTF_8);
+                LocalDateTime agora = LocalDateTime.now();
+                DateTimeFormatter formatador = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                String newEntry = agora.format(formatador) + ", " + value + "\n";
+                String newContent = existingContent + newEntry;
+                Files.write(Paths.get(fileName), newContent.getBytes(StandardCharsets.UTF_8));
+                SpertaServer.saveHashFile(fileName);
+            } catch (Exception e) {
+                throw new IOException("Erro ao escrever log: " + e.getMessage(), e);
+            }
+        }
     }
 }

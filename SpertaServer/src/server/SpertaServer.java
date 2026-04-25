@@ -21,11 +21,13 @@ import javax.net.ssl.SSLServerSocketFactory;
  * delegar cada sessao a um ClientHandler.
  */
 public class SpertaServer {
+    private static final String DIRETORIA_DATA = "SpertaServer/data";
     private static final String FICHEIRO_USERS = "SpertaServer/data/users.txt";
     private static final String FICHEIRO_CASAS = "SpertaServer/data/casas.txt";
     private static final String FICHEIRO_ESTADOS = "SpertaServer/data/estados.txt";
     private static final String FICHEIRO_CLIENTS_ONLINE = "SpertaServer/data/online_users.txt";
     private static final String DIRETORIA_LOGS = "SpertaServer/data/logs/";
+    private static final String FICHEIRO_SALT = "SpertaServer/salt.bin";
     static final String FICHEIRO_CLIENTATTESTATION = "SpertaServer/data/client_attestation.txt";
 
     /**
@@ -113,7 +115,7 @@ public class SpertaServer {
      */
     private static void inicializarEstrutura() {
         try {
-            File dataDir = new File("SpertaServer/data");
+            File dataDir = new File(DIRETORIA_DATA);
             dataDir.mkdirs();
 
             File logsDir = new File(DIRETORIA_LOGS);
@@ -240,17 +242,19 @@ public class SpertaServer {
         File file = new File(path);
         if (!file.exists())
             return new byte[0];
+        File hashFile = new File(path + ".hash");
+        if (!hashFile.exists()) {
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
+        }
         byte[] data = Files.readAllBytes(file.toPath());
         if (data.length == 0)
             return new byte[0];
         byte[] plaintext = CryptoManager.decrypt(data);
-        File hashFile = new File(path + ".hash");
-        if (hashFile.exists()) {
-            String stored = new String(Files.readAllBytes(hashFile.toPath()), StandardCharsets.UTF_8).trim();
-            if (!calculateHashFromBytes(plaintext).equals(stored)) {
-                System.err.println("NOK-INTEGRITY");
-                System.exit(-1);
-            }
+        String stored = new String(Files.readAllBytes(hashFile.toPath()), StandardCharsets.UTF_8).trim();
+        if (!calculateHashFromBytes(plaintext).equals(stored)) {
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
         }
         return plaintext;
     }
@@ -278,7 +282,7 @@ public class SpertaServer {
 
     private static byte[] loadOrCreateSalt() {
         try {
-            File saltFile = new File("SpertaServer/salt.bin");
+            File saltFile = new File(FICHEIRO_SALT);
 
             if (saltFile.exists()) {
                 return Files.readAllBytes(saltFile.toPath());

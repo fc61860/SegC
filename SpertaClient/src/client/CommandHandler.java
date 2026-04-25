@@ -20,6 +20,10 @@ import javax.crypto.spec.SecretKeySpec;
  * servidor.
  */
 public class CommandHandler {
+    private static final String DIRETORIA_DATA = "SpertaClient/data/";
+    private static final String FICHEIRO_TEMP_SUMMARY = "temp_summary.txt";
+    private static final String FICHEIRO_TEMP_LOG = "temp_log.csv";
+    private static final String FICHEIRO_TEMP_KEY = "temp_key.bin";
     private final FileTransferManager fileTransferManager;
     private final String keystorePath;
     private final String keystorePass;
@@ -114,6 +118,10 @@ public class CommandHandler {
             System.out.println("Formato incorreto. Tente: EC <hm> <d> <int>");
             return;
         }
+        if (!isValidEcValue(parts[3])) {
+            System.out.println("Valor invalido. Use 0, 1 ou 2..600.");
+            return;
+        }
 
         try {
             // Passo a: Enviar notificacao EC ao servidor (sem o valor)
@@ -148,6 +156,15 @@ public class CommandHandler {
         }
     }
 
+    private boolean isValidEcValue(String valueText) {
+        try {
+            int value = Integer.parseInt(valueText);
+            return value == 0 || value == 1 || (value >= 2 && value <= 600);
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     /**
      * Trata o comando RT e guarda localmente o resumo recebido do servidor.
      */
@@ -160,8 +177,7 @@ public class CommandHandler {
 
         try {
             sendCommand(input, outStream);
-            String tempFicheiro = "temp_summary.txt";
-            File summaryFile = fileTransferManager.processFile(inStream, tempFicheiro);
+            File summaryFile = fileTransferManager.processFile(inStream, FICHEIRO_TEMP_SUMMARY);
             if (summaryFile == null)
                 return;
 
@@ -228,7 +244,7 @@ public class CommandHandler {
             }
 
             String nomeFicheiro = "client_summary_" + parts[1] + ".txt";
-            String outputPath = "SpertaClient/data/" + nomeFicheiro;
+            String outputPath = DIRETORIA_DATA + nomeFicheiro;
             Files.write(Paths.get(outputPath), linhasDecifradas, java.nio.charset.StandardCharsets.UTF_8);
             System.out.println("Resumo decifrado e guardado em: " + outputPath);
 
@@ -251,12 +267,12 @@ public class CommandHandler {
         try {
             sendCommand(input, outStream);
             String nomeFicheiro = "client_log_" + parts[1] + "_" + parts[2] + ".csv";
-            File logFile = fileTransferManager.processFile(inStream, "temp_log.csv");
+            File logFile = fileTransferManager.processFile(inStream, FICHEIRO_TEMP_LOG);
             if (logFile == null) {
                 return;
             }
 
-            File keyFile = fileTransferManager.processKeyFile(inStream, "temp_key.bin");
+            File keyFile = fileTransferManager.processKeyFile(inStream, FICHEIRO_TEMP_KEY);
             if (keyFile == null) {
                 return;
             }
@@ -293,7 +309,7 @@ public class CommandHandler {
                 }
             }
 
-            String outputPath = "SpertaClient/data/" + nomeFicheiro;
+            String outputPath = DIRETORIA_DATA + nomeFicheiro;
             Files.write(Paths.get(outputPath), linhasDecifradas, java.nio.charset.StandardCharsets.UTF_8);
             System.out.println("Historico decifrado e guardado em: " + outputPath);
 

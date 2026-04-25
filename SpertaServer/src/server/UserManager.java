@@ -22,6 +22,8 @@ import java.nio.charset.StandardCharsets;
  */
 public class UserManager {
     private static final int MAX_TENTATIVAS = 3;
+    private static final long MAX_CERT_BYTES = 64 * 1024;
+    private static final String DIRETORIA_DATA = "SpertaServer/data/";
     private static final String FICHEIRO_USERS = "SpertaServer/data/users.txt";
     private static final String FICHEIRO_CLIENTS_ONLINE = "SpertaServer/data/online_users.txt";
     private final Object userFileLock = new Object();
@@ -69,12 +71,20 @@ public class UserManager {
                 outStream.flush();
 
                 long certSize = inStream.readLong();
+                if (certSize <= 0 || certSize > MAX_CERT_BYTES) {
+                    return null;
+                }
                 byte[] certBytes = new byte[(int) certSize];
                 inStream.readFully(certBytes);
 
-                File certFile = new File("SpertaServer/data/" + user + ".cer");
+                File certFile = new File(buildCertPath(user));
                 try (java.io.FileOutputStream fos = new java.io.FileOutputStream(certFile)) {
                     fos.write(certBytes);
+                }
+                try {
+                    SpertaServer.saveHashFile(certFile.getPath());
+                } catch (Exception e) {
+                    return null;
                 }
 
                 return "OK-NEW-USER";
@@ -112,6 +122,9 @@ public class UserManager {
      *                               disponivel
      */
     public boolean userExists(String user) throws FileNotFoundException {
+        if (!ValidationUtils.isValidUserOrHouse(user)) {
+            return false;
+        }
         if (!SpertaServer.checkIntegrity(FICHEIRO_USERS)) {
             System.err.println("NOK-INTEGRITY");
             System.exit(-1);
@@ -228,8 +241,8 @@ public class UserManager {
         synchronized (userFileLock) {
             try (Scanner sc = new Scanner(file)) {
                 while (sc.hasNextLine()) {
-                    String[] parts = sc.nextLine().split(":", 2);
-                    if (parts.length == 2 && parts[0].equals(user)) {
+                    String[] parts = sc.nextLine().split(":", 3);
+                    if (parts.length == 3 && parts[0].equals(user)) {
                         return parts[1];
                     }
                 }
@@ -332,9 +345,16 @@ public class UserManager {
      * @throws Exception se ocorrer um erro ao ler o certificado
      */
     public Certificate loadUserCertificate(String user) throws Exception {
-        File certFile = new File("SpertaServer/data/" + user + ".cer");
+        if (!ValidationUtils.isValidUserOrHouse(user)) {
+            return null;
+        }
+        File certFile = new File(buildCertPath(user));
         if (!certFile.exists()) {
             return null;
+        }
+        if (!SpertaServer.checkIntegrity(certFile.getPath())) {
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
         }
 
         try (FileInputStream fis = new FileInputStream(certFile)) {
@@ -353,5 +373,9 @@ public class UserManager {
     public PublicKey getUserPublicKey(String user) throws Exception {
         Certificate cert = loadUserCertificate(user);
         return cert != null ? cert.getPublicKey() : null;
+    }
+
+    private String buildCertPath(String user) {
+        return DIRETORIA_DATA + user + ".cer";
     }
 }

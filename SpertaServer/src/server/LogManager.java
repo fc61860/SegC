@@ -17,6 +17,7 @@ import java.util.Set;
  */
 public class LogManager {
     private static final String DIRETORIA_LOGS = "SpertaServer/data/logs/";
+    private static final String DIRETORIA_DATA = "SpertaServer/data/";
 
     /**
      * Envia ao cliente um resumo com a ultima leitura disponivel de cada
@@ -32,6 +33,11 @@ public class LogManager {
      */
     public void receberTemp(HouseManager houseManager, String user, String houseName, ObjectOutputStream outStream)
             throws IOException {
+        if (!ValidationUtils.isValidUserOrHouse(user) || !ValidationUtils.isValidUserOrHouse(houseName)) {
+            outStream.writeObject("NOK");
+            outStream.flush();
+            return;
+        }
         String line = houseManager.findHouseLine(houseName);
         if (line == null) {
             outStream.writeObject("NOHM");
@@ -65,6 +71,12 @@ public class LogManager {
             PermissionsManager permissionsManager,
             DeviceManager deviceManager, String user, String houseName, String device, ObjectOutputStream outStream)
             throws IOException {
+        if (!ValidationUtils.isValidUserOrHouse(user) || !ValidationUtils.isValidUserOrHouse(houseName)
+                || !ValidationUtils.isValidDeviceId(device)) {
+            outStream.writeObject("NOK");
+            outStream.flush();
+            return;
+        }
         String line = houseManager.findHouseLine(houseName);
         if (line == null) {
             outStream.writeObject("NOHM");
@@ -99,6 +111,10 @@ public class LogManager {
             return null;
         }
         try {
+            if (!SpertaServer.checkIntegrity(fileName)) {
+                System.err.println("NOK-INTEGRITY");
+                System.exit(-1);
+            }
             byte[] data = Files.readAllBytes(Paths.get(fileName));
             if (data.length == 0)
                 return null;
@@ -207,7 +223,7 @@ public class LogManager {
         String[] allSections = { "E", "G", "L", "M", "P", "S" };
         int numKeys = 0;
         for (String s : allSections) {
-            File keyFile = new File("SpertaServer/data/key." + houseName + "." + s + "." + user);
+            File keyFile = new File(buildKeyPath(houseName, s, user));
             if (keyFile.exists() && keyFile.length() > 0) {
                 numKeys++;
             }
@@ -217,8 +233,12 @@ public class LogManager {
         outStream.flush();
 
         for (String s : allSections) {
-            File keyFile = new File("SpertaServer/data/key." + houseName + "." + s + "." + user);
+            File keyFile = new File(buildKeyPath(houseName, s, user));
             if (keyFile.exists() && keyFile.length() > 0) {
+                if (!SpertaServer.checkIntegrity(keyFile.getPath())) {
+                    System.err.println("NOK-INTEGRITY");
+                    System.exit(-1);
+                }
                 outStream.writeObject(s);
                 byte[] keyBytes = Files.readAllBytes(keyFile.toPath());
                 outStream.writeInt(keyBytes.length);
@@ -248,6 +268,10 @@ public class LogManager {
         }
 
         try {
+            if (!SpertaServer.checkIntegrity(logPath)) {
+                System.err.println("NOK-INTEGRITY");
+                System.exit(-1);
+            }
             byte[] logBytes = Files.readAllBytes(Paths.get(logPath));
 
             if (logBytes.length == 0) {
@@ -273,13 +297,17 @@ public class LogManager {
 
     private void sendSectionKeyFile(String houseName, char section, String user, ObjectOutputStream outStream)
             throws IOException {
-        String keyFilePath = "SpertaServer/data/key." + houseName + "." + section + "." + user;
+        String keyFilePath = buildKeyPath(houseName, String.valueOf(section), user);
         File keyFile = new File(keyFilePath);
 
         if (!keyFile.exists() || keyFile.length() == 0) {
             outStream.writeObject("NODATA_KEY");
             outStream.flush();
             return;
+        }
+        if (!SpertaServer.checkIntegrity(keyFile.getPath())) {
+            System.err.println("NOK-INTEGRITY");
+            System.exit(-1);
         }
         byte[] keyBytes = Files.readAllBytes(keyFile.toPath());
 
@@ -292,5 +320,9 @@ public class LogManager {
         outStream.write(keyBytes);
         outStream.flush();
 
+    }
+
+    private static String buildKeyPath(String houseName, String section, String user) {
+        return DIRETORIA_DATA + "key." + houseName + "." + section + "." + user;
     }
 }
