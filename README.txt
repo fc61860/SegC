@@ -150,4 +150,10 @@ NOTA: O <userName> deve corresponder ao alias na keystore (client1, client2, cli
       Após setup-all não há utilizadores registados, por isso qualquer
       password funciona na primeira ligação.
 
+------------------------------------------------------------------------
+LIMITAÇÕES DP PROJETO
+------------------------------------------------------------------------
+- O número de clientes ativos simultaneamente é restrito definido no backlog 
+ao criar o Server Socket na classe SpertaServer.
+
 ================================================================================
